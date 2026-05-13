@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Komanda API
 
 Backend da plataforma de conexão entre profissionais da gastronomia e restaurantes.
@@ -21,3 +22,6 @@ npx prisma migrate dev
 
 # Iniciar o servidor
 npm run start:dev
+=======
+# komanda-api
+>>>>>>> 2aad9be57a00be5ffddde4cdf6643746377e219c
