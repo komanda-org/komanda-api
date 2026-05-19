@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, Matches } from 'class-validator';
+import { IsEmail, IsString, MinLength, Matches, IsOptional, IsUrl } from 'class-validator';
 
 export class CreateProfessionalDto {
   @IsEmail()
@@ -27,4 +27,18 @@ export class CreateProfessionalDto {
     message: 'Cargo principal é obrigatório',
   })
   mainRole!: string;
+
+  @IsOptional()
+  @IsString()
+  @IsUrl({}, {
+    message: 'Foto de perfil deve ser uma URL válida',
+  })
+  profilePhoto?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(10, {
+    message: 'Resumo de experiências deve ter no mínimo 10 caracteres',
+  })
+  experienceSummary?: string;
 }
