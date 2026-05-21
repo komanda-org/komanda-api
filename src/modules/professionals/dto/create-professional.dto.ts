@@ -1,9 +1,12 @@
-import { IsEmail, IsString, MinLength, MaxLength, Matches, IsOptional, IsUrl } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, Matches, IsOptional, IsUrl } from 'class-validator';
 
 export class CreateProfessionalDto {
   @IsEmail()
+  @Matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, {
+    message: 'Email deve ser válido'
+  })
   @MaxLength(50,{
-    message: 'Email deve ter no maximo 50 caracteres'
+    message: 'Email deve ter no máximo 50 caracteres'
   })
   email!: string;
 
@@ -20,6 +23,9 @@ export class CreateProfessionalDto {
   password!: string;
 
   @IsString()
+  @Matches(/\S/, {
+    message: 'Nome completo não pode ser apenas espaços'
+  })
   @MinLength(3, {
     message: 'Nome completo deve ter no mínimo 3 caracteres'
   })
@@ -29,8 +35,14 @@ export class CreateProfessionalDto {
   fullName!: string;
 
   @IsString()
-  @MinLength(3, {
+  @IsNotEmpty({
     message: 'Cargo principal é obrigatório'
+  })
+  @Matches(/\S/, {
+    message: 'Cargo principal não pode ser apenas espaços'
+  })
+  @MinLength(3, {
+    message: 'Cargo principal deve ter no mínimo 3 caracteres'
   })
   @MaxLength(100, {
     message: 'Cargo principal deve ter no máximo 100 caracteres'
