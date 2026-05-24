@@ -1,12 +1,12 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, Matches, IsOptional, IsUrl } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, Matches, IsOptional, IsUrl, IsArray,
+  IsNumber } from 'class-validator';
 
 export class CreateProfessionalDto {
-  @IsEmail()
-  @Matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, {
+  @IsEmail({}, {
     message: 'Email deve ser válido'
   })
-  @MaxLength(50,{
-    message: 'Email deve ter no máximo 50 caracteres'
+  @MaxLength(255,{
+    message: 'Email deve ter no máximo 255 caracteres'
   })
   email!: string;
 
@@ -16,9 +16,6 @@ export class CreateProfessionalDto {
   })
   @MaxLength(64, {
     message: 'Senha deve ter no máximo 64 caracteres'
-  })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-    message: 'Senha deve ter letra maiúscula, minúscula e número'
   })
   password!: string;
 
@@ -34,20 +31,30 @@ export class CreateProfessionalDto {
   })
   fullName!: string;
 
-  @IsString()
-  @IsNotEmpty({
+  @IsString({
     message: 'Cargo principal é obrigatório'
+  })
+  @MinLength(1, {
+    message: 'Cargo principal não pode estar vazio'
   })
   @Matches(/\S/, {
     message: 'Cargo principal não pode ser apenas espaços'
-  })
-  @MinLength(3, {
-    message: 'Cargo principal deve ter no mínimo 3 caracteres'
   })
   @MaxLength(100, {
     message: 'Cargo principal deve ter no máximo 100 caracteres'
   })
   mainRole!: string;
+
+  @IsOptional()
+  @IsArray({
+    message: 'Cargos de interesse deve ser uma lista'
+  })
+  @IsString({ each: true, message: 'Cada cargo deve ser uma string' })
+  @MaxLength(50, { 
+    each: true, 
+    message: 'Cada cargo deve ter no máximo 50 caracteres' 
+  })
+  interestedRoles?: string[];
 
   @IsOptional()
   @IsString()
@@ -58,11 +65,28 @@ export class CreateProfessionalDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(10, {
-    message: 'Resumo de experiências deve ter no mínimo 10 caracteres'
+  @MaxLength(100, {
+    message: 'Bairro deve ter no máximo 100 caracteres'
   })
-  @MaxLength(1000, {
-    message: 'Resumo de experiências deve ter no máximo 1000 caracteres'
+  neighborhood?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{5}-?\d{3}$/, {
+    message: 'CEP deve estar no formato 00000-000'
   })
-  experienceSummary?: string;
+  zipCode?: string;
+
+  @IsOptional()
+  @IsNumber({}, {
+    message: 'Latitude deve ser um número'
+  })
+  latitude?: number;
+
+  @IsOptional()
+  @IsNumber({}, {
+    message: 'Longitude deve ser um número'
+  })
+  longitude?: number;
+
 }
