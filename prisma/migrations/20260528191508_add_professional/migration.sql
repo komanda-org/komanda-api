@@ -30,8 +30,5 @@ CREATE TABLE "professionals" (
 -- CreateIndex
 CREATE UNIQUE INDEX "professionals_user_id_key" ON "professionals"("user_id");
 
--- CreateIndex
-CREATE UNIQUE INDEX "professionals_fullName_key" ON "professionals"("fullName");
-
 -- AddForeignKey
 ALTER TABLE "professionals" ADD CONSTRAINT "professionals_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
