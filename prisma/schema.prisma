@@ -39,8 +39,7 @@ model Professional {
   interestedRoles String[]
   neighborhood String?
   zipCode String? 
-  latitude Float?
-  averageRating Float?
+  averageRating Float?   /// @min 0.0 @max 5.0
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")

@@ -1,8 +1,9 @@
 import { ConflictException } from '@nestjs/common';
-import { RegisterProfessionalUseCase } from './register-professional.use-case';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { AuthCryptoService } from 'src/auth/auth-crypto.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateProfessionalDto } from '../dto/create-professional.dto';
+import { RegisterProfessionalUseCase } from './register-professional.use-case';
 
 describe('RegisterProfessionalUseCase', () => {
     const dto: CreateProfessionalDto = {
@@ -12,8 +13,6 @@ describe('RegisterProfessionalUseCase', () => {
         mainRole: 'Garçonete',
     };
 
-    // Fábrica de mock: monta um PrismaService falso já com o caminho feliz pronto.
-    // overrides permite trocar partes do comportamento em cada teste.
     function criarMockPrisma(overrides: Record<string, unknown> = {}): PrismaService {
         const user = {
             id: 'user-id-123',
@@ -42,8 +41,7 @@ describe('RegisterProfessionalUseCase', () => {
 
         const prisma = {
             user: { findUnique: jest.fn().mockResolvedValue(null) },
-            // executa o callback recebido, injetando o tx falso
-            $transaction: jest.fn((cb: (tx: unknown) => unknown) => cb(tx)),
+            $transaction: jest.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb(tx))),
             ...overrides,
         };
 
@@ -65,12 +63,37 @@ describe('RegisterProfessionalUseCase', () => {
         expect(resultado.role).toBe('PROFISSIONAL');
     });
 
-    it('deve lançar ConflictException quando o email já existe', async () => {
+    it('deve lancar ConflictException quando o email ja existe (pre-checagem)', async () => {
         const prisma = criarMockPrisma({
             user: { findUnique: jest.fn().mockResolvedValue({ id: 'existente' }) },
         });
         const useCase = new RegisterProfessionalUseCase(prisma, mockAuth);
 
         await expect(useCase.execute(dto)).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('deve lancar ConflictException em caso de race condition (P2002)', async () => {
+        const p2002Error = new Prisma.PrismaClientKnownRequestError(
+            'Unique constraint failed',
+            { code: 'P2002', clientVersion: '7.8.0' },
+        );
+
+        const prisma = criarMockPrisma({
+            $transaction: jest.fn(() => Promise.reject(p2002Error)),
+        });
+        const useCase = new RegisterProfessionalUseCase(prisma, mockAuth);
+
+        await expect(useCase.execute(dto)).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('deve propagar erros desconhecidos sem engolir', async () => {
+        const dbError = new Error('Erro inesperado no banco');
+
+        const prisma = criarMockPrisma({
+            $transaction: jest.fn(() => Promise.reject(dbError)),
+        });
+        const useCase = new RegisterProfessionalUseCase(prisma, mockAuth);
+
+        await expect(useCase.execute(dto)).rejects.toThrow('Erro inesperado no banco');
     });
 });

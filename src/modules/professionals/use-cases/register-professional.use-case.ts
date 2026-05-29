@@ -1,9 +1,9 @@
 import { ConflictException, Injectable } from "@nestjs/common";
 import { Prisma, Role } from '@prisma/client';
+import { AuthCryptoService } from "src/auth/auth-crypto.service";
+import { PrismaService } from "src/prisma/prisma.service";
 import { CreateProfessionalDto } from "../dto/create-professional.dto";
 import { ProfessionalResponseDto } from "../dto/professional-response.dto";
-import { PrismaService } from "src/prisma/prisma.service";
-import { AuthCryptoService } from "src/auth/auth-crypto.service";
 
 @Injectable()
 export class RegisterProfessionalUseCase {
@@ -44,13 +44,12 @@ export class RegisterProfessionalUseCase {
                         interestedRoles: dto.interestedRoles,
                         neighborhood: dto.neighborhood,
                         zipCode: dto.zipCode,
-                        latitude: dto.latitude,
                     },
                     include: { user: true },
                 });
             });
 
-            // Montamos a resposta só com campos públicos — passwordHash nunca sai
+            // Montamos a resposta s� com campos p�blicos � passwordHash nunca sai
             return {
                 id: professional.id,
                 userId: professional.userId,
@@ -61,12 +60,12 @@ export class RegisterProfessionalUseCase {
                 createdAt: professional.createdAt,
             };
         } catch (error) {
-            // Camada 2: rede de segurança contra condição de corrida no email
+            // Camada 2: rede de seguran�a contra condi��o de corrida no email
             if (
                 error instanceof Prisma.PrismaClientKnownRequestError &&
                 error.code === 'P2002'
             ) {
-                throw new ConflictException('Email já cadastrado');
+                throw new ConflictException('Email j� cadastrado');
             }
             throw error;
         }
