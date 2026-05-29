@@ -1,5 +1,13 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, MaxLength, Matches, IsOptional, IsUrl, IsArray,
-  IsNumber } from 'class-validator';
+import {
+  IsArray,
+  IsEmail,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Matches,
+  MaxLength,
+  MinLength
+} from 'class-validator';
 
 export class CreateProfessionalDto {
   @IsEmail({}, {
@@ -76,17 +84,4 @@ export class CreateProfessionalDto {
     message: 'CEP deve estar no formato 00000-000'
   })
   zipCode?: string;
-
-  @IsOptional()
-  @IsNumber({}, {
-    message: 'Latitude deve ser um número'
-  })
-  latitude?: number;
-
-  @IsOptional()
-  @IsNumber({}, {
-    message: 'Longitude deve ser um número'
-  })
-  longitude?: number;
-
 }
