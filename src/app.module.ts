@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { envValidationSchema } from './config/env.validation';
 import { ProfessionalsModule } from './modules/professionals/Professionals.module';
@@ -12,6 +13,7 @@ import { ProfessionalsModule } from './modules/professionals/Professionals.modul
       isGlobal: true,
       validationSchema: envValidationSchema,
     }),
+    AuthModule,
     PrismaModule,
     ProfessionalsModule,
   ],
