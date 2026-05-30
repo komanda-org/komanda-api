@@ -51,7 +51,6 @@ export class RegisterProfessionalUseCase {
 
             // Montamos a resposta s� com campos p�blicos � passwordHash nunca sai
             return {
-                id: professional.id,
                 userId: professional.userId,
                 email: professional.user.email,
                 role: professional.user.role,
