@@ -27,6 +27,7 @@ model User {
   deletedAt    DateTime? @map("deleted_at")
   active       Boolean   @default(true)
   professional Professional?
+  restaurant   Restaurant?
   @@map("users")
 }
 
@@ -45,4 +46,21 @@ model Professional {
   active       Boolean   @default(true)
   user User @relation(fields: [userId], references: [id])
   @@map("professionals")
+}
+
+model Restaurant {
+  userId String @id @map("user_id")
+  restaurantName String
+  cnpj String @unique
+  address String
+  phone String
+  zipCode String @map("zip_code")
+  logoUrl String? @map("logo_url")
+  averageRating Float?   /// @min 0.0 @max 5.0
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+  active       Boolean   @default(true)
+  user User @relation(fields: [userId], references: [id])
+  @@map("restaurants")
 }
