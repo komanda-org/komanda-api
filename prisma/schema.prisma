@@ -50,12 +50,13 @@ model Professional {
 
 model Restaurant {
   userId String @id @map("user_id")
-  restaurantName String
-  cnpj String @unique
-  address String
+  tradeName String
   phone String
+  address String
+  latitude Float
+  longitude Float
+  cnpj String @unique
   zipCode String @map("zip_code")
-  logoUrl String? @map("logo_url")
   averageRating Float?   /// @min 0.0 @max 5.0
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")

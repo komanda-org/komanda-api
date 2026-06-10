@@ -1,11 +1,11 @@
+import { Type } from 'class-transformer';
 import {
   IsEmail,
-  IsOptional,
+  IsNumber,
   IsString,
-  IsUrl,
   Matches,
   MaxLength,
-  MinLength
+  MinLength,
 } from 'class-validator';
 
 export class CreateRestaurantDto {
@@ -28,12 +28,12 @@ export class CreateRestaurantDto {
 
   @IsString()
   @MinLength(3, {
-    message: 'Nome do restaurante deve ter no mínimo 3 caracteres'
+    message: 'Nome comercial deve ter no mínimo 3 caracteres'
   })
   @MaxLength(255, {
-    message: 'Nome do restaurante deve ter no máximo 255 caracteres'
+    message: 'Nome comercial deve ter no máximo 255 caracteres'
   })
-  restaurantName!: string;
+  tradeName!: string;
 
   @IsString()
   @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, {
@@ -62,9 +62,11 @@ export class CreateRestaurantDto {
   })
   zipCode!: string;
 
-  @IsOptional()
-  @IsUrl({}, {
-    message: 'URL do logo deve ser válida'
-  })
-  logoUrl?: string;
+  @Type(() => Number)
+  @IsNumber()
+  latitude!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  longitude!: number;
 }

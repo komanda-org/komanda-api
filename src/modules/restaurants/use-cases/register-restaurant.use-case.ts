@@ -26,7 +26,7 @@ export class RegisterRestaurantUseCase {
 
         try {
             // Tudo dentro do callback grava junto ou sofre rollback junto
-            const restaurant = await this.prisma.$transaction(async (tx) => {
+            const restaurant = await this.prisma.$transaction(async (tx: any) => {
                 const user = await tx.user.create({
                     data: {
                         email: dto.email,
@@ -38,12 +38,13 @@ export class RegisterRestaurantUseCase {
                 return tx.restaurant.create({
                     data: {
                         userId: user.id,
-                        restaurantName: dto.restaurantName,
-                        cnpj: dto.cnpj,
-                        address: dto.address,
+                        tradeName: dto.tradeName,
                         phone: dto.phone,
+                        address: dto.address,
+                        latitude: dto.latitude,
+                        longitude: dto.longitude,
+                        cnpj: dto.cnpj,
                         zipCode: dto.zipCode,
-                        logoUrl: dto.logoUrl,
                     },
                     include: { user: true },
                 });
@@ -53,12 +54,13 @@ export class RegisterRestaurantUseCase {
                 userId: restaurant.userId,
                 email: restaurant.user.email,
                 role: restaurant.user.role,
-                restaurantName: restaurant.restaurantName,
-                cnpj: restaurant.cnpj,
-                address: restaurant.address,
+                tradeName: restaurant.tradeName,
                 phone: restaurant.phone,
+                address: restaurant.address,
+                latitude: restaurant.latitude,
+                longitude: restaurant.longitude,
+                cnpj: restaurant.cnpj,
                 zipCode: restaurant.zipCode,
-                logoUrl: restaurant.logoUrl,
                 createdAt: restaurant.createdAt,
             };
         } catch (error: any) {
