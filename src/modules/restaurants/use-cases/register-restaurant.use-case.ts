@@ -14,7 +14,7 @@ export class RegisterRestaurantUseCase {
     ) { }
 
     async execute(dto: CreateRestaurantDto): Promise<RestaurantResponseDto> {
-        // Camada 1: barra o email duplicado antes de qualquer escrita
+
         const emailEmUso = await this.prisma.user.findUnique({
             where: { email: dto.email },
         });
@@ -25,8 +25,7 @@ export class RegisterRestaurantUseCase {
         const hashedPassword = await this.auth.hash(dto.password);
 
         try {
-            // Tudo dentro do callback grava junto ou sofre rollback junto
-            const restaurant = await this.prisma.$transaction(async (tx: any) => {
+            const restaurant = await this.prisma.$transaction(async (tx) => {
                 const user = await tx.user.create({
                     data: {
                         email: dto.email,
@@ -64,6 +63,12 @@ export class RegisterRestaurantUseCase {
                 createdAt: restaurant.createdAt,
             };
         } catch (error: any) {
+            if (
+                error instanceof Prisma.PrismaClientKnownRequestError &&
+                error.code === 'P2002'
+            ) {
+                throw new ConflictException('Email já cadastrado');
+            }
             throw error;
         }
     }
