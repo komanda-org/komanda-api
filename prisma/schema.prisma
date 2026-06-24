@@ -27,6 +27,7 @@ model User {
   deletedAt    DateTime? @map("deleted_at")
   active       Boolean   @default(true)
   professional Professional?
+  passwordResetTokens PasswordResetToken[]
   @@map("users")
 }
 
@@ -45,4 +46,15 @@ model Professional {
   active       Boolean   @default(true)
   user User @relation(fields: [userId], references: [id])
   @@map("professionals")
+}
+
+model PasswordResetToken {
+  id String @id @default(uuid()) @db.VarChar(36)
+  token String @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  userId String @map("user_id")
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("password_reset_tokens")
 }

@@ -26,6 +26,10 @@ export const LOGIN_DTO_FIXTURE = {
   password: 'password123',
 };
 
+export const RECOVER_PASSWORD_DTO_FIXTURE = {
+  email: 'test@example.com',
+};
+
 export const LOGIN_DTO_INVALID_PASS = {
   email: 'test@example.com',
   password: 'wrongpassword',
