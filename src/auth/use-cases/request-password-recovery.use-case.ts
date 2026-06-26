@@ -1,10 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from 'src/prisma/prisma.service';
-import {
-  IMailProvider,
-  MAIL_PROVIDER,
-} from '../interfaces/mail-provider.interface';
+import { IMailProvider, MAIL_PROVIDER, } from '../interfaces/mail-provider.interface';
 import { RecoverPasswordDto } from '../dto/recover-password.dto';
 
 @Injectable()

@@ -91,7 +91,7 @@ describe('AuthController', () => {
         RECOVER_PASSWORD_DTO_FIXTURE,
       );
       expect(result).toEqual({
-        message: 'Se o email constar em nossa base, as instruções foram enviadas',
+        message: 'Se o e-mail constar em nossa base, as instruções foram enviadas',
       });
     });
   });

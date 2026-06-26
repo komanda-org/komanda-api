@@ -7,6 +7,6 @@ export class ConsoleMailProvider implements IMailProvider {
 
   async sendPasswordRecoveryEmail({ to, token }: SendPasswordRecoveryEmailParams): Promise<void> {
     const recoveryUrl = `http://localhost:3000/resetar-senha?token=${token}`;
-    this.logger.log(`Password recovery requested for ${to}. Recovery URL: ${recoveryUrl}`);
+    this.logger.log(`Recuperação de senha solicitada para ${to}. URL de recuperação: ${recoveryUrl}`);
   }
 }

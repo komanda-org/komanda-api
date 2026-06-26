@@ -10,7 +10,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly requestPasswordRecoveryUseCase: RequestPasswordRecoveryUseCase,
-  ) {}
+  ) { }
 
   @Post('login')
   @HttpCode(200)
@@ -24,7 +24,7 @@ export class AuthController {
     await this.requestPasswordRecoveryUseCase.execute(dto);
 
     return {
-      message: 'Se o email constar em nossa base, as instruções foram enviadas',
+      message: 'Se o e-mail constar em nossa base, as instruções foram enviadas',
     };
   }
 }
