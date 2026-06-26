@@ -43,6 +43,65 @@ model Professional {
   updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
   active       Boolean   @default(true)
-  user User @relation(fields: [userId], references: [id])
+  user         User          @relation(fields: [userId], references: [id])
+  applications Application[]
   @@map("professionals")
+}
+
+enum ApplicationStatus {
+  PENDING
+  UNDER_REVIEW
+  REJECTED
+  APPROVED
+}
+
+enum Shift {
+  MORNING
+  AFTERNOON
+  NIGHT
+}
+
+enum ContractType {
+  CLT
+  FREELANCER
+  PJ
+  EVENT
+  TEMPORARY
+}
+
+enum JobStatus {
+  ACTIVE
+  CLOSED
+  FILLED
+  EXPIRED
+}
+
+model Job {
+  id           String           @id @default(uuid()) @db.VarChar(36)
+  role         String
+  shift        Shift
+  contractType ContractType     @map("contract_type")
+  salary       String?
+  description  String
+  urgent       Boolean          @default(false)
+  status       JobStatus        @default(ACTIVE)
+  expiresAt    DateTime         @map("expires_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  deletedAt    DateTime?        @map("deleted_at")
+  active       Boolean          @default(true)
+  applications Application[]
+  @@map("jobs")
+}
+
+model Application {
+  id             String            @id @default(uuid()) @db.VarChar(36)
+  jobId          String            @map("job_id")
+  professionalId String            @map("professional_id")
+  status         ApplicationStatus @default(PENDING)
+  appliedAt      DateTime          @default(now()) @map("applied_at")
+  job            Job               @relation(fields: [jobId], references: [id])
+  professional   Professional      @relation(fields: [professionalId], references: [userId])
+  @@unique([jobId, professionalId])
+  @@map("applications")
 }
