@@ -11,6 +11,7 @@ describe('RegisterRestaurantUseCase', () => {
   beforeEach(() => {
     mockPrisma = {
       user: {
+        findUnique: jest.fn(),
         create: jest.fn(),
       },
       restaurant: {
