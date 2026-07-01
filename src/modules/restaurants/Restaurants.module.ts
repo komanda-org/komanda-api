@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { RestaurantsController } from './Restaurants.controller';
+import { RegisterRestaurantUseCase } from './use-cases/register-restaurant.use-case';
+import { PrismaModule } from 'src/prisma/prisma.module';
+import { AuthModule } from 'src/auth/auth.module';
+
+@Module({
+    imports: [PrismaModule, AuthModule],
+    controllers: [RestaurantsController],
+    providers: [RegisterRestaurantUseCase]
+})
+
+export class RestaurantsModule { }
