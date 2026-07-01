@@ -16,7 +16,7 @@ CREATE TABLE "jobs" (
     "role" TEXT NOT NULL,
     "shift" "Shift" NOT NULL,
     "contract_type" "ContractType" NOT NULL,
-    "salary" TEXT,
+    "salary" DECIMAL(10,2),
     "description" TEXT NOT NULL,
     "urgent" BOOLEAN NOT NULL DEFAULT false,
     "status" "JobStatus" NOT NULL DEFAULT 'ACTIVE',
@@ -32,8 +32,8 @@ CREATE TABLE "jobs" (
 -- CreateTable
 CREATE TABLE "applications" (
     "id" VARCHAR(36) NOT NULL,
-    "job_id" TEXT NOT NULL,
-    "professional_id" TEXT NOT NULL,
+    "job_id" VARCHAR(36) NOT NULL,
+    "professional_id" VARCHAR(36) NOT NULL,
     "status" "ApplicationStatus" NOT NULL DEFAULT 'PENDING',
     "applied_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
