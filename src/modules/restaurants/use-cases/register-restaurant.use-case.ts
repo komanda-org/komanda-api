@@ -35,7 +35,6 @@ export class RegisterRestaurantUseCase {
         const hashedPassword = await this.auth.hash(dto.password);
 
         try {
-            // Tudo dentro do callback grava junto ou sofre rollback junto
             const restaurant = await this.prisma.$transaction(async (tx) => {
                 const user = await tx.user.create({
                     data: {
@@ -53,9 +52,10 @@ export class RegisterRestaurantUseCase {
                         cuisineType: dto.cuisineType,
                         description: dto.description,
                         address: dto.address,
-                        phone: dto.phone,
+                        latitude: dto.latitude,
+                        longitude: dto.longitude,
+                        cnpj: dto.cnpj,
                         zipCode: dto.zipCode,
-                        logoUrl: dto.logoUrl,
                     },
                     include: { user: true },
                 });
@@ -70,9 +70,10 @@ export class RegisterRestaurantUseCase {
                 cuisineType: restaurant.cuisineType,
                 description: restaurant.description,
                 address: restaurant.address,
-                phone: restaurant.phone,
+                latitude: restaurant.latitude,
+                longitude: restaurant.longitude,
+                cnpj: restaurant.cnpj,
                 zipCode: restaurant.zipCode,
-                logoUrl: restaurant.logoUrl,
                 createdAt: restaurant.createdAt,
             };
         } catch (error: any) {

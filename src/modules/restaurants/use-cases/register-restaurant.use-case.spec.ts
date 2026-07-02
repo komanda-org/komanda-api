@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { RegisterRestaurantUseCase } from './register-restaurant.use-case';
 import { CreateRestaurantDto } from '../dto/create-restaurant.dto';
 
@@ -42,13 +42,13 @@ describe('RegisterRestaurantUseCase', () => {
         logoUrl: 'https://example.com/logo.png',
       };
 
+    it('should register a new restaurant successfully', async () => {
       const hashedPassword = 'hashedPassword123';
       mockAuthCryptoService.hash.mockResolvedValue(hashedPassword);
 
       const userId = 'user-123';
       const now = new Date();
 
-      mockPrisma.user.findUnique.mockResolvedValue(null);
       mockPrisma.$transaction.mockImplementation(async (callback) => {
         const mockTx = {
           user: {
@@ -64,12 +64,13 @@ describe('RegisterRestaurantUseCase', () => {
           restaurant: {
             create: jest.fn().mockResolvedValue({
               userId,
-              restaurantName: createRestaurantDto.restaurantName,
-              cnpj: createRestaurantDto.cnpj,
-              address: createRestaurantDto.address,
+              tradeName: createRestaurantDto.tradeName,
               phone: createRestaurantDto.phone,
+              address: createRestaurantDto.address,
+              latitude: createRestaurantDto.latitude,
+              longitude: createRestaurantDto.longitude,
+              cnpj: createRestaurantDto.cnpj,
               zipCode: createRestaurantDto.zipCode,
-              logoUrl: createRestaurantDto.logoUrl,
               createdAt: now,
               updatedAt: now,
               user: {
@@ -88,7 +89,7 @@ describe('RegisterRestaurantUseCase', () => {
       expect(result.userId).toBe(userId);
       expect(result.email).toBe(createRestaurantDto.email);
       expect(result.role).toBe(Role.RESTAURANTE);
-      expect(result.restaurantName).toBe(createRestaurantDto.restaurantName);
+      expect(result.tradeName).toBe(createRestaurantDto.tradeName);
     });
 
     it('should throw ConflictException when email already exists', async () => {

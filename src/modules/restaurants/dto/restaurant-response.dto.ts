@@ -6,11 +6,14 @@ export interface RestaurantResponseDto {
   role: Role;
   restaurantName: string;
   cnpj: string;
+  tradeName: string;
+  phone: string;
   cuisineType: string;
   description: string;
   address: string;
-  phone: string;
+  latitude: number;
+  longitude: number;
+  cnpj: string;
   zipCode: string;
-  logoUrl?: string;
   createdAt: Date;
 }
