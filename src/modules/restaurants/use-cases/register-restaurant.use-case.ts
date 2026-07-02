@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Prisma, Role } from '@prisma/client';
 import { AuthCryptoService } from "src/auth/auth-crypto.service";
 import { PrismaService } from "src/prisma/prisma.service";
-import { UserAlreadyExistsException } from "src/auth/exceptions";
+import { UserAlreadyExistsException, CnpjAlreadyExistsException } from "src/auth/exceptions";
 import { CreateRestaurantDto } from "../dto/create-restaurant.dto";
 import { RestaurantResponseDto } from "../dto/restaurant-response.dto";
 
@@ -16,8 +16,8 @@ export class RegisterRestaurantUseCase {
 
     async execute(dto: CreateRestaurantDto): Promise<RestaurantResponseDto> {
         const normalizedEmail = dto.email.trim().toLowerCase();
+        const normalizedCnpj = dto.cnpj.replace(/\D/g, '');
 
-        // Camada 1: barra o email duplicado antes de qualquer escrita
         const emailEmUso = await this.prisma.user.findUnique({
             where: { email: normalizedEmail },
         });
@@ -26,10 +26,10 @@ export class RegisterRestaurantUseCase {
         }
 
         const cnpjEmUso = await this.prisma.restaurant.findUnique({
-            where: { cnpj: dto.cnpj },
+            where: { cnpj: normalizedCnpj },
         });
         if (cnpjEmUso) {
-            throw new UserAlreadyExistsException();
+            throw new CnpjAlreadyExistsException();
         }
 
         const hashedPassword = await this.auth.hash(dto.password);
@@ -48,14 +48,13 @@ export class RegisterRestaurantUseCase {
                     data: {
                         userId: user.id,
                         restaurantName: dto.restaurantName,
-                        cnpj: dto.cnpj,
+                        cnpj: normalizedCnpj,
                         cuisineType: dto.cuisineType,
                         description: dto.description,
                         address: dto.address,
-                        latitude: dto.latitude,
-                        longitude: dto.longitude,
-                        cnpj: dto.cnpj,
+                        phone: dto.phone,
                         zipCode: dto.zipCode,
+                        logoUrl: dto.logoUrl,
                     },
                     include: { user: true },
                 });
@@ -67,13 +66,12 @@ export class RegisterRestaurantUseCase {
                 role: restaurant.user.role,
                 restaurantName: restaurant.restaurantName,
                 cnpj: restaurant.cnpj,
+                phone: restaurant.phone,
                 cuisineType: restaurant.cuisineType,
                 description: restaurant.description,
                 address: restaurant.address,
-                latitude: restaurant.latitude,
-                longitude: restaurant.longitude,
-                cnpj: restaurant.cnpj,
                 zipCode: restaurant.zipCode,
+                logoUrl: restaurant.logoUrl,
                 createdAt: restaurant.createdAt,
             };
         } catch (error: any) {
@@ -82,7 +80,7 @@ export class RegisterRestaurantUseCase {
                     ? error.meta.target[0]
                     : null;
                 if (target === 'cnpj') {
-                    throw new UserAlreadyExistsException();
+                    throw new CnpjAlreadyExistsException();
                 }
                 if (target === 'email') {
                     throw new UserAlreadyExistsException();
