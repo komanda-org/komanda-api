@@ -1,11 +1,12 @@
 import {
   IsEmail,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUrl,
   Matches,
   MaxLength,
-  MinLength
+  MinLength,
 } from 'class-validator';
 
 export class CreateRestaurantDto {
@@ -42,6 +43,24 @@ export class CreateRestaurantDto {
   cnpj!: string;
 
   @IsString()
+  @MinLength(3, {
+    message: 'Tipo de cozinha deve ter no mínimo 3 caracteres'
+  })
+  @MaxLength(100, {
+    message: 'Tipo de cozinha deve ter no máximo 100 caracteres'
+  })
+  cuisineType!: string;
+
+  @IsString()
+  @MinLength(20, {
+    message: 'Descrição deve ter no mínimo 20 caracteres'
+  })
+  @MaxLength(1024, {
+    message: 'Descrição deve ter no máximo 1024 caracteres'
+  })
+  description!: string;
+
+  @IsString()
   @MinLength(5, {
     message: 'Endereço deve ter no mínimo 5 caracteres'
   })
@@ -51,14 +70,20 @@ export class CreateRestaurantDto {
   address!: string;
 
   @IsString()
+  @IsNotEmpty({
+    message: 'Telefone não pode ser vazio',
+  })
   @MaxLength(20, {
-    message: 'Telefone deve ter no máximo 20 caracteres'
+    message: 'Telefone deve ter no máximo 20 caracteres',
   })
   phone!: string;
 
   @IsString()
+  @IsNotEmpty({
+    message: 'CEP não pode ser vazio',
+  })
   @MaxLength(10, {
-    message: 'CEP deve ter no máximo 10 caracteres'
+    message: 'CEP deve ter no máximo 10 caracteres',
   })
   zipCode!: string;
 
