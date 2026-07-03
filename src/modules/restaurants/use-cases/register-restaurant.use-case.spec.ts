@@ -16,6 +16,7 @@ describe('RegisterRestaurantUseCase', () => {
         create: jest.fn(),
       },
       restaurant: {
+        findUnique: jest.fn(),
         create: jest.fn(),
       },
       $transaction: jest.fn(),

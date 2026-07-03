@@ -33,7 +33,7 @@ model User {
 }
 
 model Professional {
-  userId String @id @map("user_id") @db.VarChar(36)
+  userId String @id @map("user_id")
   fullName String
   profilePhoto String? 
   mainRole String
