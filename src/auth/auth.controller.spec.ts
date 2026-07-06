@@ -7,6 +7,7 @@ import {
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { RequestPasswordRecoveryUseCase } from './use-cases/request-password-recovery.use-case';
+import { ResetPasswordUseCase } from './use-cases/reset-password.use-case';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -16,6 +17,7 @@ describe('AuthController', () => {
   const mockRequestPasswordRecoveryUseCase = {
     execute: jest.fn(),
   };
+  const mockResetPasswordUseCase = { execute: jest.fn() };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -26,6 +28,7 @@ describe('AuthController', () => {
           provide: RequestPasswordRecoveryUseCase,
           useValue: mockRequestPasswordRecoveryUseCase,
         },
+        { provide: ResetPasswordUseCase, useValue: mockResetPasswordUseCase },
       ],
     }).compile();
 

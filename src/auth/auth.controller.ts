@@ -4,12 +4,15 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
 import { RecoverPasswordDto } from './dto/recover-password.dto';
 import { RequestPasswordRecoveryUseCase } from './use-cases/request-password-recovery.use-case';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ResetPasswordUseCase } from './use-cases/reset-password.use-case';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly requestPasswordRecoveryUseCase: RequestPasswordRecoveryUseCase,
+    private readonly resetPasswordUseCase: ResetPasswordUseCase,
   ) { }
 
   @Post('login')
@@ -26,5 +29,13 @@ export class AuthController {
     return {
       message: 'Se o e-mail constar em nossa base, as instruções foram enviadas',
     };
+  }
+
+  @Post('resetar-senha')
+  @HttpCode(200)
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.resetPasswordUseCase.execute(dto);
+
+    return { message: 'Senha alterada com sucesso, se o token for válido' };
   }
 }

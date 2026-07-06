@@ -8,9 +8,9 @@ const MOCK_USER = {
 
 describe('RequestPasswordRecoveryUseCase', () => {
   let useCase: RequestPasswordRecoveryUseCase;
-  const mockPrisma = {
-    user: { findUnique: jest.fn() },
-    passwordResetToken: { create: jest.fn() },
+    const mockPrisma = {
+    user: { findFirst: jest.fn() },
+    passwordResetToken: { create: jest.fn(), updateMany: jest.fn() },
   };
   const mockMailProvider = {
     sendPasswordRecoveryEmail: jest.fn(),
@@ -25,7 +25,7 @@ describe('RequestPasswordRecoveryUseCase', () => {
   });
 
   it('should return 200 and keep response identical when email is not found', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.user.findFirst.mockResolvedValue(null);
 
     await expect(
       useCase.execute({ email: 'missing@example.com' }),
@@ -36,16 +36,21 @@ describe('RequestPasswordRecoveryUseCase', () => {
   });
 
   it('should create a password reset token and call mail provider when email exists', async () => {
-    mockPrisma.user.findUnique.mockResolvedValue(MOCK_USER);
+    mockPrisma.user.findFirst.mockResolvedValue(MOCK_USER);
     mockPrisma.passwordResetToken.create.mockResolvedValue({});
+    mockPrisma.passwordResetToken.updateMany.mockResolvedValue({});
 
     await useCase.execute({ email: MOCK_USER.email });
+
+    expect(mockPrisma.passwordResetToken.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: MOCK_USER.id, usedAt: null }, data: expect.any(Object) }),
+    );
 
     expect(mockPrisma.passwordResetToken.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           userId: MOCK_USER.id,
-          token: expect.any(String),
+          tokenHash: expect.any(String),
           expiresAt: expect.any(Date),
         }),
       }),
