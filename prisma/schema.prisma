@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
@@ -62,14 +63,15 @@ model Professional {
 }
 
 model Restaurant {
-  userId String @id @map("user_id")
-  tradeName String
-  phone String
-  address String
-  latitude Float
-  longitude Float
+  userId String @id @map("user_id") @db.VarChar(36)
+  restaurantName String
   cnpj String @unique
+  cuisineType String @map("cuisine_type")
+  description String
+  address String
+  phone String
   zipCode String @map("zip_code")
+  logoUrl String? @map("logo_url")
   averageRating Float?   /// @min 0.0 @max 5.0
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")

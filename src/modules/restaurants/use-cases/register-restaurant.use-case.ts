@@ -1,7 +1,8 @@
-import { ConflictException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { Prisma, Role } from '@prisma/client';
 import { AuthCryptoService } from "src/auth/auth-crypto.service";
 import { PrismaService } from "src/prisma/prisma.service";
+import { UserAlreadyExistsException, CnpjAlreadyExistsException } from "src/auth/exceptions";
 import { CreateRestaurantDto } from "../dto/create-restaurant.dto";
 import { RestaurantResponseDto } from "../dto/restaurant-response.dto";
 
@@ -14,12 +15,21 @@ export class RegisterRestaurantUseCase {
     ) { }
 
     async execute(dto: CreateRestaurantDto): Promise<RestaurantResponseDto> {
+        const normalizedEmail = dto.email.trim().toLowerCase();
+        const normalizedCnpj = dto.cnpj.replace(/\D/g, '');
 
         const emailEmUso = await this.prisma.user.findUnique({
-            where: { email: dto.email },
+            where: { email: normalizedEmail },
         });
         if (emailEmUso) {
-            throw new ConflictException('Email já cadastrado');
+            throw new UserAlreadyExistsException();
+        }
+
+        const cnpjEmUso = await this.prisma.restaurant.findUnique({
+            where: { cnpj: normalizedCnpj },
+        });
+        if (cnpjEmUso) {
+            throw new CnpjAlreadyExistsException();
         }
 
         const hashedPassword = await this.auth.hash(dto.password);
@@ -28,7 +38,7 @@ export class RegisterRestaurantUseCase {
             const restaurant = await this.prisma.$transaction(async (tx) => {
                 const user = await tx.user.create({
                     data: {
-                        email: dto.email,
+                        email: normalizedEmail,
                         passwordHash: hashedPassword,
                         role: Role.RESTAURANTE,
                     },
@@ -37,13 +47,14 @@ export class RegisterRestaurantUseCase {
                 return tx.restaurant.create({
                     data: {
                         userId: user.id,
-                        tradeName: dto.tradeName,
-                        phone: dto.phone,
+                        restaurantName: dto.restaurantName,
+                        cnpj: normalizedCnpj,
+                        cuisineType: dto.cuisineType,
+                        description: dto.description,
                         address: dto.address,
-                        latitude: dto.latitude,
-                        longitude: dto.longitude,
-                        cnpj: dto.cnpj,
+                        phone: dto.phone,
                         zipCode: dto.zipCode,
+                        logoUrl: dto.logoUrl,
                     },
                     include: { user: true },
                 });
@@ -53,22 +64,29 @@ export class RegisterRestaurantUseCase {
                 userId: restaurant.userId,
                 email: restaurant.user.email,
                 role: restaurant.user.role,
-                tradeName: restaurant.tradeName,
-                phone: restaurant.phone,
-                address: restaurant.address,
-                latitude: restaurant.latitude,
-                longitude: restaurant.longitude,
+                restaurantName: restaurant.restaurantName,
                 cnpj: restaurant.cnpj,
+                phone: restaurant.phone,
+                cuisineType: restaurant.cuisineType,
+                description: restaurant.description,
+                address: restaurant.address,
                 zipCode: restaurant.zipCode,
+                logoUrl: restaurant.logoUrl,
                 createdAt: restaurant.createdAt,
             };
         } catch (error: any) {
-            if (
-                error instanceof Prisma.PrismaClientKnownRequestError &&
-                error.code === 'P2002'
-            ) {
-                throw new ConflictException('Email já cadastrado');
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+                const target = Array.isArray(error.meta?.target)
+                    ? error.meta.target[0]
+                    : null;
+                if (target === 'cnpj') {
+                    throw new CnpjAlreadyExistsException();
+                }
+                if (target === 'email') {
+                    throw new UserAlreadyExistsException();
+                }
             }
+
             throw error;
         }
     }
