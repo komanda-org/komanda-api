@@ -18,6 +18,19 @@ enum Role {
   RESTAURANTE
 }
 
+enum ContractType {
+  CLT
+  PJ
+  FREELANCER
+  ESTAGIO
+}
+
+enum JobStatus {
+  ABERTA
+  PAUSADA
+  ENCERRADA
+}
+
 model User {
   id           String    @id @default(uuid()) @db.VarChar(36)
   email        String    @unique
@@ -65,5 +78,28 @@ model Restaurant {
   deletedAt    DateTime? @map("deleted_at")
   active       Boolean   @default(true)
   user User @relation(fields: [userId], references: [id])
+  jobs Job[]
   @@map("restaurants")
+}
+
+model Job {
+  id           String       @id @default(uuid()) @db.VarChar(36)
+  title        String
+  description  String       @db.Text
+  requirements String?      @db.Text
+  salary       Decimal?     @db.Decimal(10, 2)
+  contractType ContractType @map("contract_type")
+  status       JobStatus    @default(ABERTA)
+
+  restaurantId String     @map("restaurant_id") @db.VarChar(36)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [userId], onDelete: Cascade)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  active    Boolean   @default(true)
+
+  @@index([restaurantId])
+  @@index([status])
+  @@map("jobs")
 }
