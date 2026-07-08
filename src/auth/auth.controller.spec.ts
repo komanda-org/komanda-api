@@ -1,18 +1,35 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { LOGIN_DTO_FIXTURE, USER_FIXTURE } from './__fixtures__/auth.fixtures';
+import {
+  LOGIN_DTO_FIXTURE,
+  RECOVER_PASSWORD_DTO_FIXTURE,
+  USER_FIXTURE,
+} from './__fixtures__/auth.fixtures';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { RequestPasswordRecoveryUseCase } from './use-cases/request-password-recovery.use-case';
+import { ResetPasswordUseCase } from './use-cases/reset-password.use-case';
 
 describe('AuthController', () => {
   let controller: AuthController;
   const mockAuthService = {
     login: jest.fn(),
   };
+  const mockRequestPasswordRecoveryUseCase = {
+    execute: jest.fn(),
+  };
+  const mockResetPasswordUseCase = { execute: jest.fn() };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: mockAuthService }],
+      providers: [
+        { provide: AuthService, useValue: mockAuthService },
+        {
+          provide: RequestPasswordRecoveryUseCase,
+          useValue: mockRequestPasswordRecoveryUseCase,
+        },
+        { provide: ResetPasswordUseCase, useValue: mockResetPasswordUseCase },
+      ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
@@ -64,6 +81,21 @@ describe('AuthController', () => {
       mockAuthService.login.mockRejectedValue(error);
 
       await expect(controller.login(LOGIN_DTO_FIXTURE)).rejects.toThrow(error);
+    });
+  });
+
+  describe('recoverPassword', () => {
+    it('should call requestPasswordRecoveryUseCase.execute with correct DTO', async () => {
+      mockRequestPasswordRecoveryUseCase.execute.mockResolvedValue(undefined);
+
+      const result = await controller.recoverPassword(RECOVER_PASSWORD_DTO_FIXTURE);
+
+      expect(mockRequestPasswordRecoveryUseCase.execute).toHaveBeenCalledWith(
+        RECOVER_PASSWORD_DTO_FIXTURE,
+      );
+      expect(result).toEqual({
+        message: 'Se o e-mail constar em nossa base, as instruções foram enviadas',
+      });
     });
   });
 });
