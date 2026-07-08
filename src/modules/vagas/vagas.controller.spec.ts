@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ContractType, Role } from '@prisma/client';
+import { AuthGuard } from 'src/auth/auth.guard';
+import { RolesGuard } from 'src/auth/roles.guard';
 import { VagasController } from './vagas.controller';
 import { CreateVagaUseCase } from './use-cases/create-vaga.use-case';
 
@@ -18,7 +20,16 @@ describe('VagasController', () => {
           },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({
+        canActivate: jest.fn().mockReturnValue(true),
+      })
+      .overrideGuard(RolesGuard)
+      .useValue({
+        canActivate: jest.fn().mockReturnValue(true),
+      })
+      .compile();
 
     controller = module.get<VagasController>(VagasController);
     createVagaUseCase = module.get<CreateVagaUseCase>(CreateVagaUseCase);
