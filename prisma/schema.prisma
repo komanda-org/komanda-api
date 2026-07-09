@@ -61,7 +61,6 @@ model Professional {
   deletedAt       DateTime?     @map("deleted_at")
   active          Boolean       @default(true)
   user            User          @relation(fields: [userId], references: [id])
-  applications    Application[]
   candidaturas    Candidatura[]
 
   @@map("professionals")
