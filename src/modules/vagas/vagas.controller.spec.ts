@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ContractType, Role } from '@prisma/client';
+import { ContractType, JobStatus, Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { VagasController } from './vagas.controller';
@@ -55,10 +55,20 @@ describe('VagasController', () => {
       },
     };
 
-    const result = { id: 'job-1' };
-    jest.spyOn(createVagaUseCase, 'execute').mockResolvedValue(result as never);
+    const result = {
+      id: 'job-1',
+      titulo: dto.titulo,
+      descricao: dto.descricao,
+      requisitos: dto.requisitos,
+      salario: dto.salario,
+      tipoContrato: dto.tipoContrato,
+      status: JobStatus.ABERTA,
+      restauranteId: req.user.id,
+      createdAt: new Date(),
+    };
+    jest.spyOn(createVagaUseCase, 'execute').mockResolvedValue(result);
 
-    expect(await controller.Create(dto, req)).toBe(result);
+    expect(await controller.create(dto, req)).toBe(result);
     expect(createVagaUseCase.execute).toHaveBeenCalledWith({
       titulo: dto.titulo,
       descricao: dto.descricao,

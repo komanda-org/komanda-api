@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
 import { ContractType } from '@prisma/client';
 
 export class CreateVagaDto {
@@ -23,12 +23,15 @@ export class CreateVagaDto {
 	@IsString()
 	@IsOptional()
 	@MaxLength(1000, {
-		message: 'O requisito não pode passar de 2000 caracteres'
+		message: 'O requisito não pode passar de 1000 caracteres'
 	})
 	requisitos?: string;
 
 	@IsOptional()
 	@IsNumber()
+	@Min(0, {
+		message: 'O salário não pode ser negativo'
+	})
 	salario?: number;
 
 	@IsEnum(ContractType)

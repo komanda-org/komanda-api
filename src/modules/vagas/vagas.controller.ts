@@ -14,7 +14,7 @@ export class VagasController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @Roles(Role.RESTAURANTE)
-  async Create(@Body() dto: CreateVagaDto, @Req() req: { user: { id: string } }) {
+  async create(@Body() dto: CreateVagaDto, @Req() req: { user: { id: string } }) {
     return this.createVaga.execute({
       titulo: dto.titulo,
       descricao: dto.descricao,
