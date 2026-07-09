@@ -7,6 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { envValidationSchema } from './config/env.validation';
 import { ProfessionalsModule } from './modules/professionals/Professionals.module';
 import { RestaurantsModule } from './modules/restaurants/Restaurants.module';
+import { VagasModule } from './modules/vagas/vagas.module';
 import { JobsModule } from './modules/jobs/Jobs.module';
 
 @Module({
