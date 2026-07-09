@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
@@ -17,6 +18,19 @@ enum Role {
   RESTAURANTE
 }
 
+enum ContractType {
+  CLT
+  PJ
+  FREELANCER
+  ESTAGIO
+}
+
+enum JobStatus {
+  ABERTA
+  PAUSADA
+  ENCERRADA
+}
+
 model User {
   id           String        @id @default(uuid()) @db.VarChar(36)
   email        String        @unique
@@ -27,7 +41,8 @@ model User {
   deletedAt    DateTime?     @map("deleted_at")
   active       Boolean       @default(true)
   professional Professional?
-
+  passwordResetTokens PasswordResetToken[]
+  restaurant   Restaurant?
   @@map("users")
 }
 
@@ -50,62 +65,55 @@ model Professional {
   @@map("professionals")
 }
 
-enum ApplicationStatus {
-  PENDING
-  UNDER_REVIEW
-  REJECTED
-  APPROVED
-}
+model PasswordResetToken {
+  id String @id @default(uuid()) @db.VarChar(36)
+  tokenHash String @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  usedAt DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  userId String @map("user_id")
+  user User @relation(fields: [userId], references: [id])
 
-enum Shift {
-  MORNING
-  AFTERNOON
-  NIGHT
+  @@map("password_reset_tokens")
 }
-
-enum ContractType {
-  CLT
-  FREELANCER
-  PJ
-  EVENT
-  TEMPORARY
-}
-
-enum JobStatus {
-  ACTIVE
-  CLOSED
-  FILLED
-  EXPIRED
+model Restaurant {
+  userId String @id @map("user_id") @db.VarChar(36)
+  restaurantName String
+  cnpj String @unique
+  cuisineType String @map("cuisine_type")
+  description String
+  address String
+  phone String
+  zipCode String @map("zip_code")
+  logoUrl String? @map("logo_url")
+  averageRating Float?   /// @min 0.0 @max 5.0
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+  active       Boolean   @default(true)
+  user User @relation(fields: [userId], references: [id])
+  jobs Job[]
+  @@map("restaurants")
 }
 
 model Job {
-  id           String        @id @default(uuid()) @db.VarChar(36)
-  role         String        @db.VarChar(120)
-  shift        Shift
-  contractType ContractType  @map("contract_type")
-  salary       Decimal?      @map("salary") @db.Decimal(10, 2)
-  description  String
-  urgent       Boolean       @default(false)
-  status       JobStatus     @default(ACTIVE)
-  expiresAt    DateTime      @map("expires_at")
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-  deletedAt    DateTime?     @map("deleted_at")
-  active       Boolean       @default(true)
-  applications Application[]
+  id           String       @id @default(uuid()) @db.VarChar(36)
+  title        String
+  description  String       @db.Text
+  requirements String?      @db.Text
+  salary       Decimal?     @db.Decimal(10, 2)
+  contractType ContractType @map("contract_type")
+  status       JobStatus    @default(ABERTA)
 
+  restaurantId String     @map("restaurant_id") @db.VarChar(36)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [userId], onDelete: Cascade)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  active    Boolean   @default(true)
+
+  @@index([restaurantId])
+  @@index([status])
   @@map("jobs")
-}
-
-model Application {
-  id             String            @id @default(uuid()) @db.VarChar(36)
-  jobId          String            @map("job_id") @db.VarChar(36)
-  professionalId String            @map("professional_id") @db.VarChar(36)
-  status         ApplicationStatus @default(PENDING)
-  appliedAt      DateTime          @default(now()) @map("applied_at")
-  job            Job               @relation(fields: [jobId], references: [id])
-  professional   Professional      @relation(fields: [professionalId], references: [userId])
-
-  @@unique([jobId, professionalId])
-  @@map("applications")
 }

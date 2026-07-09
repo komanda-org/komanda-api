@@ -6,6 +6,8 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { envValidationSchema } from './config/env.validation';
 import { ProfessionalsModule } from './modules/professionals/Professionals.module';
+import { RestaurantsModule } from './modules/restaurants/Restaurants.module';
+import { JobsModule } from './modules/jobs/Jobs.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { ProfessionalsModule } from './modules/professionals/Professionals.modul
     AuthModule,
     PrismaModule,
     ProfessionalsModule,
+    RestaurantsModule,
+    JobsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -7,6 +7,13 @@ import { Pool } from 'pg';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
 
+  // NOTE: some generated Prisma clients may not be available in the TS types
+  // immediately after schema changes. Expose the model delegate used by
+  // the application to avoid type errors until the client is regenerated.
+  // Prefer running `npx prisma generate` to restore proper typings.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public readonly passwordResetToken!: any;
+
   constructor() {
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     const adapter = new PrismaPg(pool);
