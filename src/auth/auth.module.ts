@@ -46,6 +46,9 @@ import { MAIL_PROVIDER } from './interfaces/mail-provider.interface';
       useClass: ConsoleMailProvider,
     },
   ],
-  exports: [AuthCryptoService, AuthGuard, RolesGuard],
+  // JwtModule é reexportado porque o AuthGuard é preso por classe via @UseGuards
+  // em outros módulos: o Nest o instancia no contexto do módulo *consumidor*,
+  // então o JwtService precisa ser resolvível lá. Exportar só o AuthGuard não basta.
+  exports: [AuthCryptoService, AuthGuard, RolesGuard, JwtModule],
 })
 export class AuthModule {}

@@ -42,7 +42,8 @@ describe('VagasController', () => {
   it('should call createVagaUseCase.execute with mapped payload', async () => {
     const dto = {
       titulo: 'Chef de Cozinha',
-      descricao: 'Vaga para chef com experiência em cozinha italiana e gestão de equipe.',
+      descricao:
+        'Vaga para chef com experiência em cozinha italiana e gestão de equipe.',
       requisitos: 'Experiência prévia, liderança e disponibilidade de horário.',
       salario: 4500,
       tipoContrato: ContractType.CLT,
@@ -66,10 +67,14 @@ describe('VagasController', () => {
       restauranteId: req.user.id,
       createdAt: new Date(),
     };
-    jest.spyOn(createVagaUseCase, 'execute').mockResolvedValue(result);
+    // Guardamos a referência do spy: passar `createVagaUseCase.execute` solto para
+    // o expect desprende o método do objeto (regra @typescript-eslint/unbound-method).
+    const executeSpy = jest
+      .spyOn(createVagaUseCase, 'execute')
+      .mockResolvedValue(result);
 
     expect(await controller.create(dto, req)).toBe(result);
-    expect(createVagaUseCase.execute).toHaveBeenCalledWith({
+    expect(executeSpy).toHaveBeenCalledWith({
       titulo: dto.titulo,
       descricao: dto.descricao,
       requisitos: dto.requisitos,
