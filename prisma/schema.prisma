@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
 }
 
@@ -32,65 +32,70 @@ enum JobStatus {
 }
 
 model User {
-  id           String    @id @default(uuid()) @db.VarChar(36)
-  email        String    @unique
-  passwordHash String    @map("password_hash")
-  role         Role
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
-  active       Boolean   @default(true)
-  professional Professional?
+  id                  String               @id @default(uuid()) @db.VarChar(36)
+  email               String               @unique
+  passwordHash        String               @map("password_hash")
+  role                Role
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  deletedAt           DateTime?            @map("deleted_at")
+  active              Boolean              @default(true)
+  professional        Professional?
   passwordResetTokens PasswordResetToken[]
-  restaurant   Restaurant?
+  restaurant          Restaurant?
+
   @@map("users")
 }
 
 model Professional {
-  userId String @id @map("user_id")
-  fullName String
-  profilePhoto String? 
-  mainRole String
+  userId          String        @id @map("user_id") @db.VarChar(36)
+  fullName        String
+  profilePhoto    String?
+  mainRole        String
   interestedRoles String[]
-  neighborhood String?
-  zipCode String? 
-  averageRating Float?   /// @min 0.0 @max 5.0
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
-  active       Boolean   @default(true)
-  user User @relation(fields: [userId], references: [id])
+  neighborhood    String?
+  zipCode         String?
+  averageRating   Float? /// @min 0.0 @max 5.0
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+  active          Boolean       @default(true)
+  user            User          @relation(fields: [userId], references: [id])
+  candidaturas    Candidatura[]
+
   @@map("professionals")
 }
 
 model PasswordResetToken {
-  id String @id @default(uuid()) @db.VarChar(36)
-  tokenHash String @unique @map("token_hash")
-  expiresAt DateTime @map("expires_at")
-  usedAt DateTime? @map("used_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  userId String @map("user_id")
-  user User @relation(fields: [userId], references: [id])
+  id        String    @id @default(uuid()) @db.VarChar(36)
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id])
 
   @@map("password_reset_tokens")
 }
+
 model Restaurant {
-  userId String @id @map("user_id") @db.VarChar(36)
+  userId         String    @id @map("user_id") @db.VarChar(36)
   restaurantName String
-  cnpj String @unique
-  cuisineType String @map("cuisine_type")
-  description String
-  address String
-  phone String
-  zipCode String @map("zip_code")
-  logoUrl String? @map("logo_url")
-  averageRating Float?   /// @min 0.0 @max 5.0
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
-  active       Boolean   @default(true)
-  user User @relation(fields: [userId], references: [id])
-  jobs Job[]
+  cnpj           String    @unique
+  cuisineType    String    @map("cuisine_type")
+  description    String
+  address        String
+  phone          String
+  zipCode        String    @map("zip_code")
+  logoUrl        String?   @map("logo_url")
+  averageRating  Float? /// @min 0.0 @max 5.0
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+  active         Boolean   @default(true)
+  user           User      @relation(fields: [userId], references: [id])
+  jobs           Job[]
+
   @@map("restaurants")
 }
 
@@ -106,12 +111,28 @@ model Job {
   restaurantId String     @map("restaurant_id") @db.VarChar(36)
   restaurant   Restaurant @relation(fields: [restaurantId], references: [userId], onDelete: Cascade)
 
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
-  active    Boolean   @default(true)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  deletedAt    DateTime?     @map("deleted_at")
+  active       Boolean       @default(true)
+  candidaturas Candidatura[]
 
   @@index([restaurantId])
   @@index([status])
   @@map("jobs")
+}
+
+model Candidatura {
+  id             String       @id @default(uuid()) @db.VarChar(36)
+  job            Job          @relation(fields: [jobId], references: [id])
+  jobId          String       @db.VarChar(36)
+  professional   Professional @relation(fields: [professionalId], references: [userId])
+  professionalId String       @db.VarChar(36)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@unique([jobId, professionalId])
+  @@index([jobId])
+  @@index([professionalId])
+  @@map("candidaturas")
 }
