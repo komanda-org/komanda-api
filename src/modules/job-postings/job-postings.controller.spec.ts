@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ContractType, JobStatus, Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
-import { VagasController } from './vagas.controller';
+import { VagasController } from './job-postings.controller';
 import { CreateVagaUseCase } from './use-cases/create-vaga.use-case';
 import { CandidatarVagaUseCase } from './use-cases/candidatar-vaga.use-case';
 

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from 'src/auth/auth.module';
-import { VagasController } from './vagas.controller';
+import { VagasController } from './job-postings.controller';
 import { CreateVagaUseCase } from './use-cases/create-vaga.use-case';
 import { CandidatarVagaUseCase } from './use-cases/candidatar-vaga.use-case';
 
