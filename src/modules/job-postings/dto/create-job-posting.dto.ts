@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 import { ContractType } from '@prisma/client';
 
-export class CreateVagaDto {
+export class CreateJobPostingDto {
   @IsString()
   @MinLength(5, {
     message: 'O titulo deve ter ao menos 5 caracteres',

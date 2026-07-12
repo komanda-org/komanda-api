@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { ContractType, JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateVagaUseCase } from './create-vaga.use-case';
+import { CreateJobPostingUseCase } from './create-job-posting.use-case';
 
 // Mock tipado no lugar de `any`: só declaramos os métodos do Prisma que este
 // use case realmente usa. Se ele passar a chamar outro método, o TS acusa.
@@ -10,8 +10,8 @@ type PrismaMock = {
   job: { create: jest.Mock };
 };
 
-describe('CreateVagaUseCase', () => {
-  let useCase: CreateVagaUseCase;
+describe('CreateJobPostingUseCase', () => {
+  let useCase: CreateJobPostingUseCase;
   let prisma: PrismaMock;
 
   const restauranteId = 'restaurant-1';
@@ -38,10 +38,10 @@ describe('CreateVagaUseCase', () => {
     };
 
     // Um único cast na fronteira do mock — evita `any` espalhado pelo teste.
-    useCase = new CreateVagaUseCase(prisma as unknown as PrismaService);
+    useCase = new CreateJobPostingUseCase(prisma as unknown as PrismaService);
   });
 
-  it('cria a vaga e mapeia o VagaResponseDto', async () => {
+  it('cria a vaga e mapeia o JobPostingResponseDto', async () => {
     const createdAt = new Date('2026-01-01T12:00:00Z');
     prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
     prisma.job.create.mockResolvedValue({

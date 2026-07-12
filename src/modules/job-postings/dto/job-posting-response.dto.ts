@@ -1,6 +1,6 @@
 import { ContractType, JobStatus } from '@prisma/client';
 
-export interface VagaResponseDto {
+export interface JobPostingResponseDto {
   id: string;
   titulo: string;
   descricao: string;

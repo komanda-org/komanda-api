@@ -1,6 +1,6 @@
 import { Expose } from 'class-transformer';
 
-export class CandidaturaResponseDto {
+export class ApplicationResponseDto {
   @Expose()
   id: string;
 
@@ -13,7 +13,7 @@ export class CandidaturaResponseDto {
   @Expose()
   createdAt: Date;
 
-  constructor(partial: Partial<CandidaturaResponseDto>) {
+  constructor(partial: Partial<ApplicationResponseDto>) {
     Object.assign(this, partial);
   }
 }

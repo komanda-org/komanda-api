@@ -2,27 +2,27 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ContractType, JobStatus, Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
-import { VagasController } from './job-postings.controller';
-import { CreateVagaUseCase } from './use-cases/create-vaga.use-case';
-import { CandidatarVagaUseCase } from './use-cases/candidatar-vaga.use-case';
+import { JobPostingsController } from './job-postings.controller';
+import { CreateJobPostingUseCase } from './use-cases/create-job-posting.use-case';
+import { ApplyToJobPostingUseCase } from './use-cases/apply-to-job-posting.use-case';
 
-describe('VagasController', () => {
-  let controller: VagasController;
-  let createVagaUseCase: CreateVagaUseCase;
-  let candidatarVagaUseCase: CandidatarVagaUseCase;
+describe('JobPostingsController', () => {
+  let controller: JobPostingsController;
+  let createJobPostingUseCase: CreateJobPostingUseCase;
+  let applyToJobPostingUseCase: ApplyToJobPostingUseCase;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [VagasController],
+      controllers: [JobPostingsController],
       providers: [
         {
-          provide: CreateVagaUseCase,
+          provide: CreateJobPostingUseCase,
           useValue: {
             execute: jest.fn(),
           },
         },
         {
-          provide: CandidatarVagaUseCase,
+          provide: ApplyToJobPostingUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -39,10 +39,12 @@ describe('VagasController', () => {
       })
       .compile();
 
-    controller = module.get<VagasController>(VagasController);
-    createVagaUseCase = module.get<CreateVagaUseCase>(CreateVagaUseCase);
-    candidatarVagaUseCase = module.get<CandidatarVagaUseCase>(
-      CandidatarVagaUseCase,
+    controller = module.get<JobPostingsController>(JobPostingsController);
+    createJobPostingUseCase = module.get<CreateJobPostingUseCase>(
+      CreateJobPostingUseCase,
+    );
+    applyToJobPostingUseCase = module.get<ApplyToJobPostingUseCase>(
+      ApplyToJobPostingUseCase,
     );
   });
 
@@ -50,7 +52,7 @@ describe('VagasController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('should call createVagaUseCase.execute with mapped payload', async () => {
+  it('should call createJobPostingUseCase.execute with mapped payload', async () => {
     const dto = {
       titulo: 'Chef de Cozinha',
       descricao:
@@ -78,10 +80,10 @@ describe('VagasController', () => {
       restauranteId: req.user.id,
       createdAt: new Date(),
     };
-    // Guardamos a referência do spy: passar `createVagaUseCase.execute` solto para
+    // Guardamos a referência do spy: passar `createJobPostingUseCase.execute` solto para
     // o expect desprende o método do objeto (regra @typescript-eslint/unbound-method).
     const executeSpy = jest
-      .spyOn(createVagaUseCase, 'execute')
+      .spyOn(createJobPostingUseCase, 'execute')
       .mockResolvedValue(result);
 
     expect(await controller.create(dto, req)).toBe(result);
@@ -95,7 +97,7 @@ describe('VagasController', () => {
     });
   });
 
-  it('candidata o profissional do token e mapeia o CandidaturaResponseDto', async () => {
+  it('candidata o profissional do token e mapeia o ApplicationResponseDto', async () => {
     const createdAt = new Date('2026-01-01T12:00:00Z');
     const req = {
       user: { id: 'professional-1', role: Role.PROFISSIONAL },
@@ -104,7 +106,7 @@ describe('VagasController', () => {
     // O Prisma devolve o campo como `professionalId` (inglês, como no schema);
     // o DTO de resposta expõe `profissionalId` para o front.
     const executeSpy = jest
-      .spyOn(candidatarVagaUseCase, 'execute')
+      .spyOn(applyToJobPostingUseCase, 'execute')
       .mockResolvedValue({
         id: 'candidatura-1',
         jobId: 'job-1',
@@ -113,7 +115,7 @@ describe('VagasController', () => {
         updatedAt: createdAt,
       });
 
-    const result = await controller.candidatar('job-1', {}, req);
+    const result = await controller.apply('job-1', {}, req);
 
     // O id do profissional tem que sair do token, nunca do body ou da rota.
     expect(executeSpy).toHaveBeenCalledWith('job-1', 'professional-1');

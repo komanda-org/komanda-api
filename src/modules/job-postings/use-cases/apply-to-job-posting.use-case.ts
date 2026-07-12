@@ -1,9 +1,14 @@
-import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { Prisma, JobStatus, Candidatura } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
-export class CandidatarVagaUseCase {
+export class ApplyToJobPostingUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
   async execute(vagaId: string, profissionalId: string): Promise<Candidatura> {
@@ -17,7 +22,9 @@ export class CandidatarVagaUseCase {
     }
 
     if (vaga.status !== JobStatus.ABERTA) {
-      throw new UnprocessableEntityException('A vaga não está aberta para candidaturas');
+      throw new UnprocessableEntityException(
+        'A vaga não está aberta para candidaturas',
+      );
     }
 
     // 2. Attempt to create candidacy

@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ContractType, Prisma } from '@prisma/client';
-import { VagaResponseDto } from '../dto/vaga-response.dto';
+import { JobPostingResponseDto } from '../dto/job-posting-response.dto';
 
-interface CreateVagaInput {
+interface CreateJobPostingInput {
   titulo: string;
   descricao: string;
   requisitos?: string;
@@ -13,10 +13,10 @@ interface CreateVagaInput {
 }
 
 @Injectable()
-export class CreateVagaUseCase {
+export class CreateJobPostingUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
-  async execute(input: CreateVagaInput): Promise<VagaResponseDto> {
+  async execute(input: CreateJobPostingInput): Promise<JobPostingResponseDto> {
     // Camada 1: barra o restaurante inexistente antes de qualquer escrita.
     // Dá a mensagem clara e barata no caso normal (a maioria das requisições).
     const restaurante = await this.prisma.restaurant.findUnique({
