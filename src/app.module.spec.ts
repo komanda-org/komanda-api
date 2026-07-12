@@ -10,14 +10,13 @@ import { AppModule } from './app.module';
  * `@UseGuards(AuthGuard)` é instanciado no contexto do módulo *que o usa*, logo
  * o JwtService precisa estar resolvível lá — se algum módulo esquecer disso, a
  * aplicação quebra no boot e nenhum teste unitário percebe. Este aqui percebe.
+ *
+ * As variáveis de ambiente que o ConfigModule exige são setadas em
+ * test/jest-setup-env.ts, e não aqui: o `ConfigModule.forRoot()` do AppModule
+ * roda na avaliação do decorator, ou seja, já no `import` da linha 2 — antes de
+ * qualquer beforeAll.
  */
 describe('AppModule', () => {
-  beforeAll(() => {
-    process.env.DATABASE_URL =
-      process.env.DATABASE_URL ?? 'postgresql://user:pass@localhost:5432/test';
-    process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret';
-  });
-
   it('resolve todas as dependências, incluindo os guards dos controllers', async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
