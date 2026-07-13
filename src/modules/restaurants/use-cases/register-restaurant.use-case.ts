@@ -71,7 +71,7 @@ export class RegisterRestaurantUseCase {
                 description: restaurant.description,
                 address: restaurant.address,
                 zipCode: restaurant.zipCode,
-                logoUrl: restaurant.logoUrl,
+                logoUrl: restaurant.logoUrl ?? undefined,
                 createdAt: restaurant.createdAt,
             };
         } catch (error: any) {
