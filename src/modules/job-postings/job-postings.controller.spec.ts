@@ -1,15 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ContractType, JobStatus, Role } from '@prisma/client';
+import {
+  CandidaturaStatus,
+  ContractType,
+  JobStatus,
+  Role,
+} from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { JobPostingsController } from './job-postings.controller';
 import { CreateJobPostingUseCase } from './use-cases/create-job-posting.use-case';
 import { ApplyToJobPostingUseCase } from './use-cases/apply-to-job-posting.use-case';
+import { ListJobApplicantsUseCase } from './use-cases/list-job-applicants.use-case';
 
 describe('JobPostingsController', () => {
   let controller: JobPostingsController;
   let createJobPostingUseCase: CreateJobPostingUseCase;
   let applyToJobPostingUseCase: ApplyToJobPostingUseCase;
+  let listJobApplicantsUseCase: ListJobApplicantsUseCase;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -23,6 +30,12 @@ describe('JobPostingsController', () => {
         },
         {
           provide: ApplyToJobPostingUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: ListJobApplicantsUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -45,6 +58,9 @@ describe('JobPostingsController', () => {
     );
     applyToJobPostingUseCase = module.get<ApplyToJobPostingUseCase>(
       ApplyToJobPostingUseCase,
+    );
+    listJobApplicantsUseCase = module.get<ListJobApplicantsUseCase>(
+      ListJobApplicantsUseCase,
     );
   });
 
@@ -111,6 +127,7 @@ describe('JobPostingsController', () => {
         id: 'candidatura-1',
         jobId: 'job-1',
         professionalId: req.user.id,
+        status: CandidaturaStatus.PENDENTE,
         createdAt,
         updatedAt: createdAt,
       });
@@ -125,5 +142,37 @@ describe('JobPostingsController', () => {
       profissionalId: 'professional-1',
       createdAt,
     });
+  });
+
+  it('lista os candidatos usando o restaurante do token e os filtros da query', async () => {
+    const req = {
+      user: { id: 'restaurant-1', role: Role.RESTAURANTE },
+    };
+
+    const response = {
+      data: [],
+      total: 0,
+      skip: 10,
+      take: 5,
+    };
+
+    const executeSpy = jest
+      .spyOn(listJobApplicantsUseCase, 'execute')
+      .mockResolvedValue(response);
+
+    const result = await controller.listApplicants(
+      'job-1',
+      { status: CandidaturaStatus.PENDENTE, skip: 10, take: 5 },
+      req,
+    );
+
+    expect(executeSpy).toHaveBeenCalledWith({
+      vagaId: 'job-1',
+      restauranteId: 'restaurant-1',
+      status: CandidaturaStatus.PENDENTE,
+      skip: 10,
+      take: 5,
+    });
+    expect(result).toBe(response);
   });
 });
