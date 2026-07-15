@@ -3,7 +3,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { CandidaturaStatus, JobStatus, Prisma } from '@prisma/client';
+import { JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApplyToJobPostingUseCase } from './apply-to-job-posting.use-case';
 
@@ -23,11 +23,11 @@ describe('ApplyToJobPostingUseCase', () => {
 
   const vagaAberta = { id: VAGA_ID, status: JobStatus.ABERTA };
 
+  // Espelha o model Candidatura atual (sem campo status — ver schema.prisma).
   const candidaturaCriada = {
     id: 'candidatura-1',
     jobId: VAGA_ID,
     professionalId: PROFISSIONAL_ID,
-    status: CandidaturaStatus.PENDENTE,
     createdAt: new Date('2026-07-10T12:00:00Z'),
     updatedAt: new Date('2026-07-10T12:00:00Z'),
   };
