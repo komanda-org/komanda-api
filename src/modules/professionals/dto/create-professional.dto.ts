@@ -66,6 +66,13 @@ export class CreateProfessionalDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(1000, {
+    message: 'Resumo de experiências deve ter no máximo 1000 caracteres'
+  })
+  experienceSummary?: string;
+
+  @IsOptional()
+  @IsString()
   @IsUrl({}, {
     message: 'Foto de perfil deve ser uma URL válida'
   })

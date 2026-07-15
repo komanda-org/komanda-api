@@ -31,6 +31,12 @@ enum JobStatus {
   ENCERRADA
 }
 
+enum CandidaturaStatus {
+  PENDENTE
+  APROVADA
+  REJEITADA
+}
+
 model User {
   id                  String               @id @default(uuid()) @db.VarChar(36)
   email               String               @unique
@@ -48,14 +54,15 @@ model User {
 }
 
 model Professional {
-  userId          String        @id @map("user_id") @db.VarChar(36)
-  fullName        String
-  profilePhoto    String?
-  mainRole        String
-  interestedRoles String[]
-  neighborhood    String?
-  zipCode         String?
-  averageRating   Float? /// @min 0.0 @max 5.0
+  userId            String  @id @map("user_id") @db.VarChar(36)
+  fullName          String
+  profilePhoto      String?
+  mainRole          String
+  interestedRoles   String[]
+  experienceSummary String? @map("experience_summary") @db.Text
+  neighborhood      String?
+  zipCode           String?
+  averageRating     Float? /// @min 0.0 @max 5.0
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
   deletedAt       DateTime?     @map("deleted_at")
@@ -123,16 +130,18 @@ model Job {
 }
 
 model Candidatura {
-  id             String       @id @default(uuid()) @db.VarChar(36)
-  job            Job          @relation(fields: [jobId], references: [id])
-  jobId          String       @db.VarChar(36)
-  professional   Professional @relation(fields: [professionalId], references: [userId])
-  professionalId String       @db.VarChar(36)
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  id             String            @id @default(uuid()) @db.VarChar(36)
+  job            Job               @relation(fields: [jobId], references: [id])
+  jobId          String            @db.VarChar(36)
+  professional   Professional      @relation(fields: [professionalId], references: [userId])
+  professionalId String            @db.VarChar(36)
+  status         CandidaturaStatus @default(PENDENTE)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
 
   @@unique([jobId, professionalId])
   @@index([jobId])
   @@index([professionalId])
+  @@index([jobId, status])
   @@map("candidaturas")
 }

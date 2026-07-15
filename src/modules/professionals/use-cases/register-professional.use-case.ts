@@ -42,6 +42,7 @@ export class RegisterProfessionalUseCase {
                         profilePhoto: dto.profilePhoto,
                         mainRole: dto.mainRole,
                         interestedRoles: dto.interestedRoles,
+                        experienceSummary: dto.experienceSummary,
                         neighborhood: dto.neighborhood,
                         zipCode: dto.zipCode,
                     },

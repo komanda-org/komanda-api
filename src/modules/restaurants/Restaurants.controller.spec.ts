@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Role } from '@prisma/client';
 import { RestaurantsController } from './Restaurants.controller';
+import { RestaurantResponseDto } from './dto/restaurant-response.dto';
 import { RegisterRestaurantUseCase } from './use-cases/register-restaurant.use-case';
 
 describe('RestaurantsController', () => {
@@ -42,10 +44,26 @@ describe('RestaurantsController', () => {
       zipCode: '01310-100',
     };
 
-    const result = { userId: 'user-1', email: dto.email };
-    jest.spyOn(registerRestaurantUseCase, 'execute').mockResolvedValue(result);
+    const result: RestaurantResponseDto = {
+      userId: 'user-1',
+      email: dto.email,
+      role: Role.RESTAURANTE,
+      restaurantName: dto.restaurantName,
+      cnpj: dto.cnpj,
+      phone: dto.phone,
+      cuisineType: dto.cuisineType,
+      description: dto.description,
+      address: dto.address,
+      zipCode: dto.zipCode,
+      createdAt: new Date(),
+    };
+    // Guardamos a referência do spy: passar o método solto para o expect o
+    // desprende do objeto (regra @typescript-eslint/unbound-method).
+    const executeSpy = jest
+      .spyOn(registerRestaurantUseCase, 'execute')
+      .mockResolvedValue(result);
 
     expect(await controller.create(dto)).toBe(result);
-    expect(registerRestaurantUseCase.execute).toHaveBeenCalledWith(dto);
+    expect(executeSpy).toHaveBeenCalledWith(dto);
   });
 });
