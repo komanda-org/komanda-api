@@ -13,7 +13,7 @@ import { RolesGuard } from 'src/auth/roles.guard';
 import { ListJobsQueryDto } from './dto/list-jobs-query.dto';
 import { ListJobsUseCase } from './use-cases/list-jobs.use-case';
 
-@Controller('vagas')
+@Controller('jobs')
 @UseGuards(AuthGuard, RolesGuard)
 export class JobsController {
   constructor(private readonly listJobsUseCase: ListJobsUseCase) {}

@@ -81,6 +81,8 @@ describe('JobsController', () => {
     const result = await controller.listJobs(query);
 
     expect(result.take).toBe(5);
-    expect(result.data[0].restaurant.restaurantName).toBe('Restaurante Exemplo');
+    expect(result.data[0].restaurant.restaurantName).toBe(
+      'Restaurante Exemplo',
+    );
   });
 });

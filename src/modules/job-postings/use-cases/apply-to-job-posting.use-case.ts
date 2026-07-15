@@ -1,12 +1,17 @@
-import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { Prisma, JobStatus } from '@prisma/client';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
+import { Prisma, JobStatus, Candidatura } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
-export class CandidatarVagaUseCase {
+export class ApplyToJobPostingUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
-  async execute(vagaId: string, profissionalId: string): Promise<any> {
+  async execute(vagaId: string, profissionalId: string): Promise<Candidatura> {
     // 1. Verify vaga exists and is open
     const vaga = await this.prisma.job.findUnique({
       where: { id: vagaId },
@@ -17,7 +22,9 @@ export class CandidatarVagaUseCase {
     }
 
     if (vaga.status !== JobStatus.ABERTA) {
-      throw new UnprocessableEntityException('A vaga não está aberta para candidaturas');
+      throw new UnprocessableEntityException(
+        'A vaga não está aberta para candidaturas',
+      );
     }
 
     // 2. Attempt to create candidacy
@@ -25,7 +32,10 @@ export class CandidatarVagaUseCase {
       const candidatura = await this.prisma.candidatura.create({
         data: {
           jobId: vagaId,
-          profissionalId,
+          // O campo no schema é `professionalId` (inglês). O parâmetro chega em
+          // português, daí o mapeamento explícito — antes gravava `profissionalId`,
+          // que não existe no model.
+          professionalId: profissionalId,
         },
         include: {
           job: true,
