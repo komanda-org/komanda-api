@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ContractType, JobStatus } from '@prisma/client';
+import { ContractType, JobStatus, Prisma } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { JobsController } from './Jobs.controller';
@@ -16,7 +16,7 @@ describe('JobsController', () => {
         title: 'Cozinheiro',
         description: 'Responsável pela preparação dos pratos',
         requirements: 'Experiência mínima de 2 anos',
-        salary: '3000.00',
+        salary: new Prisma.Decimal('3000.00'),
         contractType: ContractType.CLT,
         status: JobStatus.ABERTA,
         restaurantId: 'restaurant-1',
