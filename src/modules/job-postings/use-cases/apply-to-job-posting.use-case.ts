@@ -12,13 +12,26 @@ export class ApplyToJobPostingUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
   async execute(vagaId: string, profissionalId: string): Promise<Candidatura> {
-    // 1. Verify vaga exists and is open
+    // 1. Verify vaga exists and is open.
+    // Nada de `vaga` entra na resposta — o DTO é montado a partir da candidatura
+    // criada —, então só trazemos os três campos que as guardas abaixo usam.
     const vaga = await this.prisma.job.findUnique({
       where: { id: vagaId },
+      select: { status: true, active: true, deletedAt: true },
     });
 
-    if (!vaga) {
+    // Vaga excluída logicamente é indistinguível de inexistente para o profissional.
+    // Precisa vir antes das checagens de estado: um 422 confirmaria que ela existe.
+    if (!vaga || vaga.deletedAt) {
       throw new NotFoundException('Vaga não encontrada');
+    }
+
+    // `active` é a desativação do registro (par com deletedAt); `status` abaixo é
+    // estado de negócio. Eixos distintos, por isso guardas e mensagens separadas.
+    if (!vaga.active) {
+      throw new UnprocessableEntityException(
+        'A vaga não está disponível para candidaturas',
+      );
     }
 
     if (vaga.status !== JobStatus.ABERTA) {
