@@ -29,8 +29,13 @@ export class UpdateApplicationStatusUseCase {
       include: { job: true },
     });
 
-    // Candidatura de outra vaga é tratada como inexistente para esta rota.
-    if (!candidatura || candidatura.jobId !== input.vagaId) {
+    // Candidatura de outra vaga, ou de vaga excluída logicamente, é tratada
+    // como inexistente para esta rota (mesmo critério do ListJobApplicantsUseCase).
+    if (
+      !candidatura ||
+      candidatura.jobId !== input.vagaId ||
+      candidatura.job.deletedAt
+    ) {
       throw new NotFoundException('Candidatura não encontrada');
     }
 

@@ -31,7 +31,7 @@ describe('UpdateApplicationStatusUseCase', () => {
     status: CandidaturaStatus.PENDENTE,
     createdAt: new Date('2026-07-10T12:00:00Z'),
     updatedAt: new Date('2026-07-10T12:00:00Z'),
-    job: { restaurantId: RESTAURANTE_ID },
+    job: { restaurantId: RESTAURANTE_ID, deletedAt: null },
   };
 
   beforeEach(() => {
@@ -81,6 +81,23 @@ describe('UpdateApplicationStatusUseCase', () => {
     prisma.candidatura.findUnique.mockResolvedValue({
       ...candidaturaPendente,
       jobId: 'outra-vaga',
+    });
+
+    await expect(
+      useCase.execute({
+        vagaId: VAGA_ID,
+        candidaturaId: CANDIDATURA_ID,
+        restauranteId: RESTAURANTE_ID,
+        status: CandidaturaStatus.APROVADA,
+      }),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.candidatura.update).not.toHaveBeenCalled();
+  });
+
+  it('lança 404 quando a vaga foi excluída logicamente', async () => {
+    prisma.candidatura.findUnique.mockResolvedValue({
+      ...candidaturaPendente,
+      job: { restaurantId: RESTAURANTE_ID, deletedAt: new Date() },
     });
 
     await expect(
