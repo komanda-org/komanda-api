@@ -21,7 +21,14 @@ describe('ApplyToJobPostingUseCase', () => {
   const VAGA_ID = 'job-1';
   const PROFISSIONAL_ID = 'professional-1';
 
-  const vagaAberta = { id: VAGA_ID, status: JobStatus.ABERTA };
+  // `active` e `deletedAt` fazem parte do que o use case valida — sem eles no
+  // mock, `vaga.active` chega como undefined e toda candidatura vira 422.
+  const vagaAberta = {
+    id: VAGA_ID,
+    status: JobStatus.ABERTA,
+    active: true,
+    deletedAt: null,
+  };
 
   // Espelha o model Candidatura atual (sem campo status — ver schema.prisma).
   const candidaturaCriada = {
@@ -81,6 +88,45 @@ describe('ApplyToJobPostingUseCase', () => {
 
     await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toThrow(
       UnprocessableEntityException,
+    );
+    expect(prisma.candidatura.create).not.toHaveBeenCalled();
+  });
+
+  it('lança NotFoundException quando a vaga foi excluída logicamente', async () => {
+    // `active` continua true de propósito: isola o deletedAt como causa do 404.
+    prisma.job.findUnique.mockResolvedValue({
+      ...vagaAberta,
+      deletedAt: new Date('2026-07-20T10:00:00Z'),
+    });
+
+    await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(prisma.candidatura.create).not.toHaveBeenCalled();
+  });
+
+  it('lança UnprocessableEntityException quando a vaga está inativa', async () => {
+    // deletedAt null e status ABERTA: o 422 só pode ter vindo do `active`.
+    prisma.job.findUnique.mockResolvedValue({ ...vagaAberta, active: false });
+
+    await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toThrow(
+      UnprocessableEntityException,
+    );
+    expect(prisma.candidatura.create).not.toHaveBeenCalled();
+  });
+
+  it('prioriza o 404 quando a vaga deletada também está encerrada', async () => {
+    // Vaga removida raramente segue ABERTA. Se a guarda de existência escorregar
+    // pra baixo da checagem de status, este é o único teste que acusa.
+    prisma.job.findUnique.mockResolvedValue({
+      ...vagaAberta,
+      deletedAt: new Date('2026-07-20T10:00:00Z'),
+      active: false,
+      status: JobStatus.ENCERRADA,
+    });
+
+    await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toThrow(
+      NotFoundException,
     );
     expect(prisma.candidatura.create).not.toHaveBeenCalled();
   });
