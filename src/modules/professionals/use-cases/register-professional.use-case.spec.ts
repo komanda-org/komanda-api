@@ -7,16 +7,20 @@ import { RegisterProfessionalUseCase } from './register-professional.use-case';
 
 describe('RegisterProfessionalUseCase', () => {
     const dto: CreateProfessionalDto = {
-        email: 'teste@komanda.com',
+        email: '  TESTE@Komanda.CoM  ',
         password: 'senha12345',
         fullName: 'Maria Silva',
         mainRole: 'Garçonete',
     };
 
+    const normalizedEmail = dto.email.toLowerCase().trim();
+
+    beforeEach(() => jest.clearAllMocks());
+
     function criarMockPrisma(overrides: Record<string, unknown> = {}): PrismaService {
         const user = {
             id: 'user-id-123',
-            email: dto.email,
+            email: normalizedEmail,
             passwordHash: 'hashed-password',
             role: 'PROFISSIONAL',
             createdAt: new Date(),
@@ -52,14 +56,18 @@ describe('RegisterProfessionalUseCase', () => {
         hash: jest.fn().mockResolvedValue('hashed-password'),
     } as unknown as AuthCryptoService;
 
-    it('deve criar um profissional e retornar sem o passwordHash', async () => {
+    it('deve criar um profissional normalizando email com lowercase e trim', async () => {
         const prisma = criarMockPrisma();
         const useCase = new RegisterProfessionalUseCase(prisma, mockAuth);
 
         const resultado = await useCase.execute(dto);
 
+        expect((prisma as unknown as { user: { findUnique: jest.Mock } }).user.findUnique).toHaveBeenCalledWith({
+            where: { email: normalizedEmail },
+        });
+
         expect(resultado).not.toHaveProperty('passwordHash');
-        expect(resultado.email).toBe(dto.email);
+        expect(resultado.email).toBe(normalizedEmail);
         expect(resultado.role).toBe('PROFISSIONAL');
     });
 
