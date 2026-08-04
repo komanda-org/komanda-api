@@ -47,7 +47,7 @@ describe('ListMyJobsUseCase', () => {
           titulo: 'Chef de Cozinha',
           descricao: 'Responsável pela cozinha',
           requisitos: 'Experiência mínima de 2 anos',
-          salario: '3500',
+          salario: 3500,
           tipoContrato: ContractType.CLT,
           status: JobStatus.ABERTA,
           createdAt,

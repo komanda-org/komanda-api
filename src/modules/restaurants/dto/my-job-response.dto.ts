@@ -5,7 +5,7 @@ export interface MyJobDto {
   titulo: string;
   descricao: string;
   requisitos: string | null;
-  salario: string | null;
+  salario: number | null;
   tipoContrato: ContractType;
   status: JobStatus;
   createdAt: Date;

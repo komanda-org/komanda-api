@@ -41,7 +41,7 @@ export class ListMyJobsUseCase {
         titulo: job.title,
         descricao: job.description,
         requisitos: job.requirements,
-        salario: job.salary ? job.salary.toString() : null,
+        salario: job.salary?.toNumber() ?? null,
         tipoContrato: job.contractType,
         status: job.status,
         createdAt: job.createdAt,
