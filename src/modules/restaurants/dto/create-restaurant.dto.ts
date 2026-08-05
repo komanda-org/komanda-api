@@ -46,7 +46,9 @@ export class CnpjValidator implements ValidatorConstraintInterface {
     const firstDigit = calcDigit(digits, 13);
     const secondDigit = calcDigit(digits, 14);
 
-    return firstDigit === Number(digits[12]) && secondDigit === Number(digits[13]);
+    return (
+      firstDigit === Number(digits[12]) && secondDigit === Number(digits[13])
+    );
   }
 
   defaultMessage(_args: ValidationArguments): string {
@@ -56,21 +58,24 @@ export class CnpjValidator implements ValidatorConstraintInterface {
 
 export class CreateRestaurantDto {
   @ApiProperty()
-  @IsEmail({}, {
-    message: 'Email deve ser válido'
-  })
+  @IsEmail(
+    {},
+    {
+      message: 'Email deve ser válido',
+    },
+  )
   @MaxLength(255, {
-    message: 'Email deve ter no máximo 255 caracteres'
+    message: 'Email deve ter no máximo 255 caracteres',
   })
   email!: string;
 
   @ApiProperty()
   @IsString()
   @MinLength(8, {
-    message: 'Senha deve ter no mínimo 8 caracteres'
+    message: 'Senha deve ter no mínimo 8 caracteres',
   })
   @MaxLength(64, {
-    message: 'Senha deve ter no máximo 64 caracteres'
+    message: 'Senha deve ter no máximo 64 caracteres',
   })
   password!: string;
 
@@ -95,30 +100,30 @@ export class CreateRestaurantDto {
   @ApiProperty()
   @IsString()
   @MinLength(3, {
-    message: 'Tipo de cozinha deve ter no mínimo 3 caracteres'
+    message: 'Tipo de cozinha deve ter no mínimo 3 caracteres',
   })
   @MaxLength(100, {
-    message: 'Tipo de cozinha deve ter no máximo 100 caracteres'
+    message: 'Tipo de cozinha deve ter no máximo 100 caracteres',
   })
   cuisineType!: string;
 
   @ApiProperty()
   @IsString()
   @MinLength(20, {
-    message: 'Descrição deve ter no mínimo 20 caracteres'
+    message: 'Descrição deve ter no mínimo 20 caracteres',
   })
   @MaxLength(1024, {
-    message: 'Descrição deve ter no máximo 1024 caracteres'
+    message: 'Descrição deve ter no máximo 1024 caracteres',
   })
   description!: string;
 
   @ApiProperty()
   @IsString()
   @MinLength(5, {
-    message: 'Endereço deve ter no mínimo 5 caracteres'
+    message: 'Endereço deve ter no mínimo 5 caracteres',
   })
   @MaxLength(255, {
-    message: 'Endereço deve ter no máximo 255 caracteres'
+    message: 'Endereço deve ter no máximo 255 caracteres',
   })
   address!: string;
 
@@ -144,9 +149,12 @@ export class CreateRestaurantDto {
 
   @ApiProperty({ required: false })
   @IsOptional()
-  @IsUrl({}, {
-    message: 'URL do logo deve ser válida',
-  })
+  @IsUrl(
+    {},
+    {
+      message: 'URL do logo deve ser válida',
+    },
+  )
   @MaxLength(2048, {
     message: 'URL do logo deve ter no máximo 2048 caracteres',
   })

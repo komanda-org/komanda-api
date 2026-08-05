@@ -14,7 +14,9 @@ export class ResetPasswordUseCase {
 
   async execute(dto: ResetPasswordDto): Promise<void> {
     const pepper = process.env.PASSWORD_RESET_TOKEN_PEPPER ?? '';
-    const tokenHash = createHmac('sha256', pepper).update(dto.token).digest('hex');
+    const tokenHash = createHmac('sha256', pepper)
+      .update(dto.token)
+      .digest('hex');
 
     const record = await this.prisma.passwordResetToken.findFirst({
       where: { tokenHash },

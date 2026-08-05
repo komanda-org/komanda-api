@@ -8,7 +8,7 @@ const MOCK_USER = {
 
 describe('RequestPasswordRecoveryUseCase', () => {
   let useCase: RequestPasswordRecoveryUseCase;
-    const mockPrisma = {
+  const mockPrisma = {
     user: { findFirst: jest.fn() },
     passwordResetToken: { create: jest.fn(), updateMany: jest.fn() },
   };
@@ -43,7 +43,10 @@ describe('RequestPasswordRecoveryUseCase', () => {
     await useCase.execute({ email: MOCK_USER.email });
 
     expect(mockPrisma.passwordResetToken.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: MOCK_USER.id, usedAt: null }, data: expect.any(Object) }),
+      expect.objectContaining({
+        where: { userId: MOCK_USER.id, usedAt: null },
+        data: expect.any(Object),
+      }),
     );
 
     expect(mockPrisma.passwordResetToken.create).toHaveBeenCalledWith(

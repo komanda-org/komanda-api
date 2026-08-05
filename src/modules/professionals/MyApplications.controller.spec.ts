@@ -31,9 +31,7 @@ describe('MyApplicationsController', () => {
       })
       .compile();
 
-    controller = module.get<MyApplicationsController>(
-      MyApplicationsController,
-    );
+    controller = module.get<MyApplicationsController>(MyApplicationsController);
     listMyApplicationsUseCase = module.get<ListMyApplicationsUseCase>(
       ListMyApplicationsUseCase,
     );

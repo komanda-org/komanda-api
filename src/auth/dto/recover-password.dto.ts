@@ -4,7 +4,9 @@ import { Transform } from 'class-transformer';
 
 export class RecoverPasswordDto {
   @ApiProperty()
-  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toLowerCase() : value,
+  )
   @IsEmail()
   email!: string;
 }
