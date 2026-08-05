@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsArray,
   IsEmail,
@@ -10,6 +11,7 @@ import {
 } from 'class-validator';
 
 export class CreateProfessionalDto {
+  @ApiProperty()
   @IsEmail({}, {
     message: 'Email deve ser válido'
   })
@@ -18,6 +20,7 @@ export class CreateProfessionalDto {
   })
   email!: string;
 
+  @ApiProperty()
   @IsString()
   @MinLength(8, {
     message: 'Senha deve ter no mínimo 8 caracteres'
@@ -27,6 +30,7 @@ export class CreateProfessionalDto {
   })
   password!: string;
 
+  @ApiProperty()
   @IsString()
   @Matches(/\S/, {
     message: 'Nome completo não pode ser apenas espaços'
@@ -39,6 +43,7 @@ export class CreateProfessionalDto {
   })
   fullName!: string;
 
+  @ApiProperty()
   @IsString({
     message: 'Cargo principal é obrigatório'
   })
@@ -53,6 +58,7 @@ export class CreateProfessionalDto {
   })
   mainRole!: string;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsArray({
     message: 'Cargos de interesse deve ser uma lista'
@@ -64,6 +70,7 @@ export class CreateProfessionalDto {
   })
   interestedRoles?: string[];
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   @MaxLength(1000, {
@@ -71,6 +78,7 @@ export class CreateProfessionalDto {
   })
   experienceSummary?: string;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   @IsUrl({}, {
@@ -78,6 +86,7 @@ export class CreateProfessionalDto {
   })
   profilePhoto?: string;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   @MaxLength(100, {
@@ -85,6 +94,7 @@ export class CreateProfessionalDto {
   })
   neighborhood?: string;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   @Matches(/^\d{5}-?\d{3}$/, {
