@@ -69,6 +69,7 @@ model Professional {
   active          Boolean       @default(true)
   user            User          @relation(fields: [userId], references: [id])
   candidaturas    Candidatura[]
+  avaliacoes Avaliacao[]
 
   @@map("professionals")
 }
@@ -102,6 +103,7 @@ model Restaurant {
   active         Boolean   @default(true)
   user           User      @relation(fields: [userId], references: [id])
   jobs           Job[]
+  avaliacoes Avaliacao[]
 
   @@map("restaurants")
 }
@@ -122,6 +124,7 @@ model Job {
   updatedAt    DateTime      @updatedAt @map("updated_at")
   deletedAt    DateTime?     @map("deleted_at")
   active       Boolean       @default(true)
+  avaliacoes   Avaliacao[]
   candidaturas Candidatura[]
 
   @@index([restaurantId])
@@ -144,4 +147,24 @@ model Candidatura {
   @@index([professionalId])
   @@index([jobId, status])
   @@map("candidaturas")
+}
+
+model Avaliacao {
+  id             String       @id @default(uuid()) @db.VarChar(36)
+  rating         Int       /// @min 1 @max 5
+  comment        String?     @db.Text
+  professional   Professional @relation(fields: [professionalId], references: [userId])
+  professionalId String       @db.VarChar(36)
+  restaurant     Restaurant   @relation(fields: [restaurantId], references: [userId])
+  restaurantId   String       @db.VarChar(36)
+  job            Job          @relation(fields: [jobId], references: [id])
+  jobId          String       @db.VarChar(36)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  @@unique([professionalId, restaurantId, jobId])
+
+  @@index([professionalId])
+  @@index([restaurantId])
+  @@index([jobId])
+  @@map("avaliacoes")
 }
