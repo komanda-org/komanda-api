@@ -15,8 +15,11 @@ export class RegisterProfessionalUseCase {
 
     async execute(dto: CreateProfessionalDto): Promise<ProfessionalResponseDto> {
         // Camada 1: barra o email duplicado antes de qualquer escrita
+
+        const normalizedEmail = dto.email.toLowerCase().trim();
+
         const emailEmUso = await this.prisma.user.findUnique({
-            where: { email: dto.email },
+            where: { email: normalizedEmail },
         });
         if (emailEmUso) {
             throw new ConflictException('Email já cadastrado');
@@ -29,7 +32,7 @@ export class RegisterProfessionalUseCase {
             const professional = await this.prisma.$transaction(async (tx) => {
                 const user = await tx.user.create({
                     data: {
-                        email: dto.email,
+                        email: normalizedEmail,
                         passwordHash: hashedPassword,
                         role: Role.PROFISSIONAL,
                     },
