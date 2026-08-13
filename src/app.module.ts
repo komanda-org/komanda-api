@@ -9,6 +9,7 @@ import { ProfessionalsModule } from './modules/professionals/Professionals.modul
 import { RestaurantsModule } from './modules/restaurants/Restaurants.module';
 import { JobPostingsModule } from './modules/job-postings/job-postings.module';
 import { JobsModule } from './modules/jobs/Jobs.module';
+import { UsersModule } from './modules/users/Users.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { JobsModule } from './modules/jobs/Jobs.module';
     RestaurantsModule,
     JobPostingsModule,
     JobsModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
