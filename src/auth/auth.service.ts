@@ -25,7 +25,11 @@ export class AuthService {
     }
 
     if (user.deletedAt) {
-      throw new UnauthorizedException('User account has been deleted');
+      throw new UnauthorizedException('Conta não encontrada');
+    }
+
+    if (!user.active) {
+      throw new UnauthorizedException('User account is inactive');
     }
 
     const passwordMatches = await this.authCrypto.compare(
@@ -35,10 +39,6 @@ export class AuthService {
 
     if (!passwordMatches) {
       throw new UnauthorizedException('Invalid password');
-    }
-
-    if (!user.active) {
-      throw new UnauthorizedException('User account is inactive');
     }
 
     const token = this.generateToken(user);
