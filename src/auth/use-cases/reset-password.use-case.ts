@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { createHmac } from 'crypto';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AuthCryptoService } from '../auth-crypto.service';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
@@ -9,11 +10,14 @@ import { UnauthorizedException } from '../exceptions/unauthorized.exception';
 export class ResetPasswordUseCase {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
     private readonly authCrypto: AuthCryptoService,
   ) {}
 
   async execute(dto: ResetPasswordDto): Promise<void> {
-    const pepper = process.env.PASSWORD_RESET_TOKEN_PEPPER ?? '';
+    const pepper = this.configService.getOrThrow<string>(
+      'PASSWORD_RESET_TOKEN_PEPPER' 
+    );
     const tokenHash = createHmac('sha256', pepper).update(dto.token).digest('hex');
 
     const record = await this.prisma.passwordResetToken.findFirst({
