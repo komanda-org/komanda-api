@@ -26,6 +26,9 @@ describe('Auth E2E', () => {
   };
 
   beforeAll(async () => {
+    process.env.AUTH_LOGIN_LIMIT = '2';
+    process.env.AUTH_LOGIN_TTL_SECONDS = '60';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -190,6 +193,44 @@ describe('Auth E2E', () => {
         .post('/auth/login')
         .send(loginDto)
         .expect(401);
+    });
+
+    it('should return 429 after exceeding the login attempt limit for the same IP', async () => {
+      const loginDto = {
+        email: 'rate-limit@example.com',
+        password: 'wrongpassword',
+      };
+
+      const user = {
+        id: '999',
+        email: loginDto.email,
+        passwordHash: '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        active: true,
+        role: 'PROFISSIONAL',
+      };
+
+      mockPrismaService.user.findUnique.mockResolvedValue(user);
+
+      await request(app.getHttpServer())
+        .post('/auth/login')
+        .send(loginDto)
+        .expect(401);
+
+      await request(app.getHttpServer())
+        .post('/auth/login')
+        .send(loginDto)
+        .expect(401);
+
+      await request(app.getHttpServer())
+        .post('/auth/login')
+        .send(loginDto)
+        .expect(429)
+        .expect(({ body }) => {
+          expect(body.message).toMatch(/muitas tentativas|Too Many Requests/i);
+        });
     });
   });
 });
