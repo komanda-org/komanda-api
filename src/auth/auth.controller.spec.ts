@@ -24,7 +24,6 @@ describe('AuthController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
-        { provide: ThrottlerGuard, useValue: { canActivate: jest.fn().mockResolvedValue(true) } },
         { provide: AuthService, useValue: mockAuthService },
         {
           provide: RequestPasswordRecoveryUseCase,
@@ -32,7 +31,10 @@ describe('AuthController', () => {
         },
         { provide: ResetPasswordUseCase, useValue: mockResetPasswordUseCase },
       ],
-    }).compile();
+    })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: jest.fn().mockResolvedValue(true) })
+      .compile();
 
     controller = module.get<AuthController>(AuthController);
     module.get<AuthService>(AuthService);
