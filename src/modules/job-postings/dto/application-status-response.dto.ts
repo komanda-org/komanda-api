@@ -6,10 +6,10 @@ export class ApplicationStatusResponseDto {
   id: string;
 
   @Expose()
-  vagaId: string;
+  jobId: string;
 
   @Expose()
-  profissionalId: string;
+  professionalId: string;
 
   @Expose()
   status: CandidaturaStatus;
