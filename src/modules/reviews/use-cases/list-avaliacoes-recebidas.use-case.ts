@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ListAvaliacoesResponseDto } from '../dto/avaliacao-response.dto';
 
@@ -20,14 +21,21 @@ export class ListAvaliacoesRecebidasUseCase {
 
     const usuario = await this.prisma.user.findUnique({
       where: { id: input.usuarioId },
-      select: { id: true },
+      select: { role: true, active: true, deletedAt: true },
     });
 
-    if (!usuario) {
+    // Usuário soft-deletado ou inativo é indistinguível de inexistente para a API.
+    if (!usuario || !usuario.active || usuario.deletedAt) {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    const where = { avaliadoId: input.usuarioId };
+    // O recebedor da avaliação é sempre o lado oposto de quem a escreveu:
+    // se :id é profissional, buscamos avaliações escritas por restaurantes
+    // (e vice-versa).
+    const isProfissional = usuario.role === Role.PROFISSIONAL;
+    const where: Prisma.AvaliacaoWhereInput = isProfissional
+      ? { professionalId: input.usuarioId, avaliadorRole: Role.RESTAURANTE }
+      : { restaurantId: input.usuarioId, avaliadorRole: Role.PROFISSIONAL };
 
     const [avaliacoes, total, aggregate] = await Promise.all([
       this.prisma.avaliacao.findMany({
@@ -37,22 +45,33 @@ export class ListAvaliacoesRecebidasUseCase {
         orderBy: { createdAt: 'desc' },
         select: {
           id: true,
-          nota: true,
-          comentario: true,
-          avaliadorId: true,
+          rating: true,
+          comment: true,
+          jobId: true,
+          professionalId: true,
+          restaurantId: true,
           createdAt: true,
         },
       }),
       this.prisma.avaliacao.count({ where }),
-      this.prisma.avaliacao.aggregate({ where, _avg: { nota: true } }),
+      this.prisma.avaliacao.aggregate({ where, _avg: { rating: true } }),
     ]);
 
     return {
-      data: avaliacoes,
+      data: avaliacoes.map((avaliacao) => ({
+        id: avaliacao.id,
+        rating: avaliacao.rating,
+        comment: avaliacao.comment,
+        jobId: avaliacao.jobId,
+        avaliadorId: isProfissional
+          ? avaliacao.restaurantId
+          : avaliacao.professionalId,
+        createdAt: avaliacao.createdAt,
+      })),
       total,
       skip,
       take,
-      mediaNotas: aggregate._avg.nota,
+      averageRating: aggregate._avg.rating,
     };
   }
 }

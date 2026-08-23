@@ -1,16 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
-import { UsersController } from './Users.controller';
+import { ReviewsController } from './Reviews.controller';
 import { ListAvaliacoesRecebidasUseCase } from './use-cases/list-avaliacoes-recebidas.use-case';
 
-describe('UsersController', () => {
-  let controller: UsersController;
+describe('ReviewsController', () => {
+  let controller: ReviewsController;
   let listAvaliacoesRecebidasUseCase: ListAvaliacoesRecebidasUseCase;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [UsersController],
+      controllers: [ReviewsController],
       providers: [
         {
           provide: ListAvaliacoesRecebidasUseCase,
@@ -30,7 +30,7 @@ describe('UsersController', () => {
       })
       .compile();
 
-    controller = module.get<UsersController>(UsersController);
+    controller = module.get<ReviewsController>(ReviewsController);
     listAvaliacoesRecebidasUseCase = module.get<ListAvaliacoesRecebidasUseCase>(
       ListAvaliacoesRecebidasUseCase,
     );
@@ -46,7 +46,7 @@ describe('UsersController', () => {
       total: 0,
       skip: 10,
       take: 5,
-      mediaNotas: null,
+      averageRating: null,
     };
 
     const executeSpy = jest
@@ -72,7 +72,7 @@ describe('UsersController', () => {
       total: 0,
       skip: 0,
       take: 20,
-      mediaNotas: null,
+      averageRating: null,
     };
 
     const executeSpy = jest

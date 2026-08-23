@@ -9,7 +9,7 @@ import { ProfessionalsModule } from './modules/professionals/Professionals.modul
 import { RestaurantsModule } from './modules/restaurants/Restaurants.module';
 import { JobPostingsModule } from './modules/job-postings/job-postings.module';
 import { JobsModule } from './modules/jobs/Jobs.module';
-import { UsersModule } from './modules/users/Users.module';
+import { ReviewsModule } from './modules/reviews/Reviews.module';
 
 @Module({
   imports: [
@@ -23,7 +23,7 @@ import { UsersModule } from './modules/users/Users.module';
     RestaurantsModule,
     JobPostingsModule,
     JobsModule,
-    UsersModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

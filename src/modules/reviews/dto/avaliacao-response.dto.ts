@@ -1,7 +1,8 @@
 export interface AvaliacaoDto {
   id: string;
-  nota: number;
-  comentario: string | null;
+  rating: number;
+  comment: string | null;
+  jobId: string;
   avaliadorId: string;
   createdAt: Date;
 }
@@ -11,5 +12,5 @@ export interface ListAvaliacoesResponseDto {
   total: number;
   skip: number;
   take: number;
-  mediaNotas: number | null;
+  averageRating: number | null;
 }

@@ -15,7 +15,7 @@ import { ListAvaliacoesRecebidasUseCase } from './use-cases/list-avaliacoes-rece
 
 @Controller('usuarios')
 @UseGuards(AuthGuard, RolesGuard)
-export class UsersController {
+export class ReviewsController {
   constructor(
     private readonly listAvaliacoesRecebidasUseCase: ListAvaliacoesRecebidasUseCase,
   ) {}
