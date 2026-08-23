@@ -49,6 +49,8 @@ model User {
   professional        Professional?
   passwordResetTokens PasswordResetToken[]
   restaurant          Restaurant?
+  avaliacoesFeitas    Avaliacao[]          @relation("AvaliacoesFeitas")
+  avaliacoesRecebidas Avaliacao[]          @relation("AvaliacoesRecebidas")
 
   @@map("users")
 }
@@ -144,4 +146,19 @@ model Candidatura {
   @@index([professionalId])
   @@index([jobId, status])
   @@map("candidaturas")
+}
+
+model Avaliacao {
+  id          String   @id @default(uuid()) @db.VarChar(36)
+  nota        Int /// @min 1 @max 5
+  comentario  String?  @db.Text
+  avaliadorId String   @map("avaliador_id") @db.VarChar(36)
+  avaliador   User     @relation("AvaliacoesFeitas", fields: [avaliadorId], references: [id])
+  avaliadoId  String   @map("avaliado_id") @db.VarChar(36)
+  avaliado    User     @relation("AvaliacoesRecebidas", fields: [avaliadoId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([avaliadoId])
+  @@map("avaliacoes")
 }
