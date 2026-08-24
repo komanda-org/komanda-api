@@ -49,6 +49,7 @@ model User {
   professional        Professional?
   passwordResetTokens PasswordResetToken[]
   restaurant          Restaurant?
+  notificacoes        Notificacao[]
 
   @@map("users")
 }
@@ -144,4 +145,17 @@ model Candidatura {
   @@index([professionalId])
   @@index([jobId, status])
   @@map("candidaturas")
+}
+
+model Notificacao {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  titulo    String   @db.VarChar(200)
+  mensagem  String   @db.Text
+  lida      Boolean  @default(false)
+  userId    String   @map("user_id") @db.VarChar(36)
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("notificacoes")
 }
