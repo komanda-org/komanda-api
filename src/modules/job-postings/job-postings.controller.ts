@@ -10,6 +10,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
@@ -25,8 +31,8 @@ import { ApplyToJobPostingUseCase } from './use-cases/apply-to-job-posting.use-c
 import { CreateJobPostingUseCase } from './use-cases/create-job-posting.use-case';
 import { ListJobApplicantsUseCase } from './use-cases/list-job-applicants.use-case';
 
-// Os guards ficam no nível da classe: valem para todas as rotas abaixo.
-// Cada método declara só o papel que pode acessá-lo, via @Roles.
+@ApiTags('Job Postings')
+@ApiBearerAuth()
 @Controller('job-postings')
 @UseGuards(AuthGuard, RolesGuard)
 export class JobPostingsController {
@@ -39,24 +45,28 @@ export class JobPostingsController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @Roles(Role.RESTAURANTE)
+  @ApiOperation({ summary: 'Criar vaga' })
+  @ApiResponse({ status: 201, description: 'Vaga criada com sucesso' })
   async create(
     @Body() dto: CreateJobPostingDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<JobPostingResponseDto> {
     // restauranteId vem do token, nunca do body (regra técnica da task).
     return this.createJobPosting.execute({
-      titulo: dto.titulo,
-      descricao: dto.descricao,
-      requisitos: dto.requisitos,
-      salario: dto.salario,
-      tipoContrato: dto.tipoContrato,
-      restauranteId: req.user.id,
+      title: dto.title,
+      description: dto.description,
+      requirements: dto.requirements,
+      salary: dto.salary,
+      contractType: dto.contractType,
+      restaurantId: req.user.id,
     });
   }
 
   @Post(':id/candidaturas')
   @HttpCode(HttpStatus.CREATED)
   @Roles(Role.PROFISSIONAL)
+  @ApiOperation({ summary: 'Candidatar-se a uma vaga' })
+  @ApiResponse({ status: 201, description: 'Candidatura criada com sucesso' })
   async apply(
     @Param('id') vagaId: string,
     @Body() _dto: CreateApplicationDto,
@@ -70,8 +80,8 @@ export class JobPostingsController {
 
     return new ApplicationResponseDto({
       id: candidatura.id,
-      vagaId: candidatura.jobId,
-      profissionalId: candidatura.professionalId,
+      jobId: candidatura.jobId,
+      professionalId: candidatura.professionalId,
       createdAt: candidatura.createdAt,
     });
   }
@@ -79,6 +89,8 @@ export class JobPostingsController {
   @Get(':id/candidaturas')
   @HttpCode(HttpStatus.OK)
   @Roles(Role.RESTAURANTE)
+  @ApiOperation({ summary: 'Listar candidatos da vaga' })
+  @ApiResponse({ status: 200, description: 'Lista de candidatos' })
   async listApplicants(
     @Param('id') vagaId: string,
     @Query() query: ListJobApplicantsQueryDto,
@@ -87,8 +99,8 @@ export class JobPostingsController {
     // A dona da vaga é conferida no use case contra o id do token — a rota
     // não recebe restauranteId de fora.
     return this.listJobApplicants.execute({
-      vagaId,
-      restauranteId: req.user.id,
+      jobId: vagaId,
+      restaurantId: req.user.id,
       status: query.status,
       skip: query.skip,
       take: query.take,

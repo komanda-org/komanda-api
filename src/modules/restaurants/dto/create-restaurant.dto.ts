@@ -12,6 +12,7 @@ import {
   ValidatorConstraintInterface,
   ValidationArguments,
 } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 @ValidatorConstraint({ name: 'CnpjValidator', async: false })
 export class CnpjValidator implements ValidatorConstraintInterface {
@@ -45,7 +46,9 @@ export class CnpjValidator implements ValidatorConstraintInterface {
     const firstDigit = calcDigit(digits, 13);
     const secondDigit = calcDigit(digits, 14);
 
-    return firstDigit === Number(digits[12]) && secondDigit === Number(digits[13]);
+    return (
+      firstDigit === Number(digits[12]) && secondDigit === Number(digits[13])
+    );
   }
 
   defaultMessage(_args: ValidationArguments): string {
@@ -54,23 +57,29 @@ export class CnpjValidator implements ValidatorConstraintInterface {
 }
 
 export class CreateRestaurantDto {
-  @IsEmail({}, {
-    message: 'Email deve ser válido'
-  })
+  @ApiProperty()
+  @IsEmail(
+    {},
+    {
+      message: 'Email deve ser válido',
+    },
+  )
   @MaxLength(255, {
-    message: 'Email deve ter no máximo 255 caracteres'
+    message: 'Email deve ter no máximo 255 caracteres',
   })
   email!: string;
 
+  @ApiProperty()
   @IsString()
   @MinLength(8, {
-    message: 'Senha deve ter no mínimo 8 caracteres'
+    message: 'Senha deve ter no mínimo 8 caracteres',
   })
   @MaxLength(64, {
-    message: 'Senha deve ter no máximo 64 caracteres'
+    message: 'Senha deve ter no máximo 64 caracteres',
   })
   password!: string;
 
+  @ApiProperty()
   @IsString()
   @MinLength(3, {
     message: 'Nome do restaurante deve ter no mínimo 3 caracteres',
@@ -80,6 +89,7 @@ export class CreateRestaurantDto {
   })
   restaurantName!: string;
 
+  @ApiProperty()
   @IsString()
   @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, {
     message: 'CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX',
@@ -87,33 +97,37 @@ export class CreateRestaurantDto {
   @Validate(CnpjValidator)
   cnpj!: string;
 
+  @ApiProperty()
   @IsString()
   @MinLength(3, {
-    message: 'Tipo de cozinha deve ter no mínimo 3 caracteres'
+    message: 'Tipo de cozinha deve ter no mínimo 3 caracteres',
   })
   @MaxLength(100, {
-    message: 'Tipo de cozinha deve ter no máximo 100 caracteres'
+    message: 'Tipo de cozinha deve ter no máximo 100 caracteres',
   })
   cuisineType!: string;
 
+  @ApiProperty()
   @IsString()
   @MinLength(20, {
-    message: 'Descrição deve ter no mínimo 20 caracteres'
+    message: 'Descrição deve ter no mínimo 20 caracteres',
   })
   @MaxLength(1024, {
-    message: 'Descrição deve ter no máximo 1024 caracteres'
+    message: 'Descrição deve ter no máximo 1024 caracteres',
   })
   description!: string;
 
+  @ApiProperty()
   @IsString()
   @MinLength(5, {
-    message: 'Endereço deve ter no mínimo 5 caracteres'
+    message: 'Endereço deve ter no mínimo 5 caracteres',
   })
   @MaxLength(255, {
-    message: 'Endereço deve ter no máximo 255 caracteres'
+    message: 'Endereço deve ter no máximo 255 caracteres',
   })
   address!: string;
 
+  @ApiProperty()
   @IsString()
   @IsNotEmpty({
     message: 'Telefone não pode ser vazio',
@@ -123,6 +137,7 @@ export class CreateRestaurantDto {
   })
   phone!: string;
 
+  @ApiProperty()
   @IsString()
   @IsNotEmpty({
     message: 'CEP não pode ser vazio',
@@ -132,10 +147,14 @@ export class CreateRestaurantDto {
   })
   zipCode!: string;
 
+  @ApiProperty({ required: false })
   @IsOptional()
-  @IsUrl({}, {
-    message: 'URL do logo deve ser válida',
-  })
+  @IsUrl(
+    {},
+    {
+      message: 'URL do logo deve ser válida',
+    },
+  )
   @MaxLength(2048, {
     message: 'URL do logo deve ter no máximo 2048 caracteres',
   })

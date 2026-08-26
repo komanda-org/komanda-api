@@ -3,18 +3,18 @@ import { CandidaturaStatus } from '@prisma/client';
 /** Recorte público do perfil do profissional exposto ao restaurante. */
 export interface JobApplicantProfileDto {
   id: string;
-  nomeCompleto: string;
-  cargoPrincipal: string;
-  fotoPerfil: string | null;
-  resumoExperiencias: string | null;
-  avaliacaoMedia: number | null;
+  fullName: string;
+  mainRole: string;
+  profilePhoto: string | null;
+  experienceSummary: string | null;
+  averageRating: number | null;
 }
 
 export interface JobApplicantDto {
-  candidaturaId: string;
+  applicationId: string;
   status: CandidaturaStatus;
-  dataCandidatura: Date;
-  profissional: JobApplicantProfileDto;
+  applicationDate: Date;
+  professional: JobApplicantProfileDto;
 }
 
 export interface ListJobApplicantsResponseDto {

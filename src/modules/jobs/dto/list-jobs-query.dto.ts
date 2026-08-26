@@ -1,13 +1,16 @@
 import { IsInt, IsOptional, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class ListJobsQueryDto {
+  @ApiProperty({ required: false })
   @IsOptional()
   @Type(() => Number)
   @IsInt({ message: 'skip deve ser um número inteiro' })
   @Min(0, { message: 'skip deve ser maior ou igual a zero' })
   skip?: number = 0;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @Type(() => Number)
   @IsInt({ message: 'take deve ser um número inteiro' })

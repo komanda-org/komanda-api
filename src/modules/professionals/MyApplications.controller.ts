@@ -7,6 +7,12 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
@@ -19,6 +25,8 @@ import { ListMyApplicationsUseCase } from './use-cases/list-my-applications.use-
 // Controller próprio para o prefixo "profissionais" (em português),
 // separado do ProfessionalsController (que expõe "professionals" para o
 // cadastro) para não alterar a rota de registro já existente.
+@ApiTags('Professionals')
+@ApiBearerAuth()
 @Controller('profissionais')
 @UseGuards(AuthGuard, RolesGuard)
 export class MyApplicationsController {
@@ -29,6 +37,8 @@ export class MyApplicationsController {
   @Get('me/candidaturas')
   @HttpCode(HttpStatus.OK)
   @Roles(Role.PROFISSIONAL)
+  @ApiOperation({ summary: 'Listar minhas candidaturas' })
+  @ApiResponse({ status: 200, description: 'Lista de candidaturas' })
   async listMyApplications(
     @Query() query: ListMyApplicationsQueryDto,
     @Req() req: AuthenticatedRequest,
