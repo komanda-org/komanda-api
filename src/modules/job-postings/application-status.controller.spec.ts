@@ -70,15 +70,15 @@ describe('ApplicationStatusController', () => {
 
     // O id do restaurante tem que sair do token, nunca do body ou da rota.
     expect(executeSpy).toHaveBeenCalledWith({
-      vagaId: 'job-1',
-      candidaturaId: 'candidatura-1',
-      restauranteId: 'restaurant-1',
+      jobId: 'job-1',
+      applicationId: 'candidatura-1',
+      restaurantId: 'restaurant-1',
       status: CandidaturaStatus.APROVADA,
     });
     expect(result).toEqual({
       id: 'candidatura-1',
-      vagaId: 'job-1',
-      profissionalId: 'professional-1',
+      jobId: 'job-1',
+      professionalId: 'professional-1',
       status: CandidaturaStatus.APROVADA,
       createdAt,
       updatedAt,

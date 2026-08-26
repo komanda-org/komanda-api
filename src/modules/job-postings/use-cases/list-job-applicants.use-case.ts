@@ -8,8 +8,8 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ListJobApplicantsResponseDto } from '../dto/job-applicant-response.dto';
 
 interface ListJobApplicantsInput {
-  vagaId: string;
-  restauranteId: string;
+  jobId: string;
+  restaurantId: string;
   status?: CandidaturaStatus;
   skip?: number;
   take?: number;
@@ -26,7 +26,7 @@ export class ListJobApplicantsUseCase {
     const take = input.take ?? 20;
 
     const vaga = await this.prisma.job.findUnique({
-      where: { id: input.vagaId },
+      where: { id: input.jobId },
       select: { restaurantId: true, active: true, deletedAt: true },
     });
 
@@ -36,14 +36,14 @@ export class ListJobApplicantsUseCase {
     }
 
     // O restauranteId vem do token: um restaurante não enxerga candidatos de vaga alheia.
-    if (vaga.restaurantId !== input.restauranteId) {
+    if (vaga.restaurantId !== input.restaurantId) {
       throw new ForbiddenException(
         'Você não tem permissão para acessar os candidatos desta vaga',
       );
     }
 
     const where: Prisma.CandidaturaWhereInput = {
-      jobId: input.vagaId,
+      jobId: input.jobId,
       ...(input.status ? { status: input.status } : {}),
     };
 
@@ -76,16 +76,16 @@ export class ListJobApplicantsUseCase {
 
     return {
       data: candidaturas.map((candidatura) => ({
-        candidaturaId: candidatura.id,
+        applicationId: candidatura.id,
         status: candidatura.status,
-        dataCandidatura: candidatura.createdAt,
-        profissional: {
+        applicationDate: candidatura.createdAt,
+        professional: {
           id: candidatura.professional.userId,
-          nomeCompleto: candidatura.professional.fullName,
-          cargoPrincipal: candidatura.professional.mainRole,
-          fotoPerfil: candidatura.professional.profilePhoto,
-          resumoExperiencias: candidatura.professional.experienceSummary,
-          avaliacaoMedia: candidatura.professional.averageRating,
+          fullName: candidatura.professional.fullName,
+          mainRole: candidatura.professional.mainRole,
+          profilePhoto: candidatura.professional.profilePhoto,
+          experienceSummary: candidatura.professional.experienceSummary,
+          averageRating: candidatura.professional.averageRating,
         },
       })),
       total,

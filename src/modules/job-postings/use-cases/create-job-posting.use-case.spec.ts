@@ -14,19 +14,19 @@ describe('CreateJobPostingUseCase', () => {
   let useCase: CreateJobPostingUseCase;
   let prisma: PrismaMock;
 
-  const restauranteId = 'restaurant-1';
+  const restaurantId = 'restaurant-1';
 
   const input = {
-    titulo: 'Chef de Cozinha',
-    descricao: 'Vaga para chef com experiência em cozinha italiana e gestão.',
-    requisitos: 'Experiência prévia e liderança.',
-    salario: 4500,
-    tipoContrato: ContractType.CLT,
-    restauranteId,
+    title: 'Chef de Cozinha',
+    description: 'Vaga para chef com experiência em cozinha italiana e gestão.',
+    requirements: 'Experiência prévia e liderança.',
+    salary: 4500,
+    contractType: ContractType.CLT,
+    restaurantId,
   };
 
   const restauranteAtivo = {
-    userId: restauranteId,
+    userId: restaurantId,
     active: true,
     deletedAt: null,
   };
@@ -46,14 +46,14 @@ describe('CreateJobPostingUseCase', () => {
     prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
     prisma.job.create.mockResolvedValue({
       id: 'job-1',
-      title: input.titulo,
-      description: input.descricao,
-      requirements: input.requisitos,
+      title: input.title,
+      description: input.description,
+      requirements: input.requirements,
       // O Prisma devolve Decimal, não number — é isso que o `.toNumber()` trata.
       salary: new Prisma.Decimal('4500.00'),
       contractType: ContractType.CLT,
       status: JobStatus.ABERTA,
-      restaurantId: restauranteId,
+      restaurantId,
       createdAt,
       updatedAt: createdAt,
       deletedAt: null,
@@ -64,18 +64,18 @@ describe('CreateJobPostingUseCase', () => {
 
     expect(result).toEqual({
       id: 'job-1',
-      titulo: input.titulo,
-      descricao: input.descricao,
-      requisitos: input.requisitos,
-      salario: 4500,
-      tipoContrato: ContractType.CLT,
+      title: input.title,
+      description: input.description,
+      requirements: input.requirements,
+      salary: 4500,
+      contractType: ContractType.CLT,
       status: JobStatus.ABERTA,
-      restauranteId,
+      restaurantId,
       createdAt,
     });
 
     // salario chega como number puro (e não como Decimal) para o consumidor.
-    expect(typeof result.salario).toBe('number');
+    expect(typeof result.salary).toBe('number');
     // Campos internos não podem vazar na resposta.
     expect(result).not.toHaveProperty('updatedAt');
     expect(result).not.toHaveProperty('deletedAt');
@@ -86,13 +86,13 @@ describe('CreateJobPostingUseCase', () => {
     prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
     prisma.job.create.mockResolvedValue({
       id: 'job-1',
-      title: input.titulo,
-      description: input.descricao,
+      title: input.title,
+      description: input.description,
       requirements: null,
       salary: null,
       contractType: ContractType.CLT,
       status: JobStatus.ABERTA,
-      restaurantId: restauranteId,
+      restaurantId,
       createdAt: new Date(),
     });
 
@@ -100,12 +100,12 @@ describe('CreateJobPostingUseCase', () => {
 
     expect(prisma.job.create).toHaveBeenCalledWith({
       data: {
-        title: input.titulo,
-        description: input.descricao,
-        requirements: input.requisitos,
-        salary: input.salario,
+        title: input.title,
+        description: input.description,
+        requirements: input.requirements,
+        salary: input.salary,
         contractType: ContractType.CLT,
-        restaurantId: restauranteId,
+        restaurantId,
       },
     });
   });
@@ -114,25 +114,25 @@ describe('CreateJobPostingUseCase', () => {
     prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
     prisma.job.create.mockResolvedValue({
       id: 'job-2',
-      title: input.titulo,
-      description: input.descricao,
+      title: input.title,
+      description: input.description,
       requirements: null,
       salary: null,
       contractType: ContractType.FREELANCER,
       status: JobStatus.ABERTA,
-      restaurantId: restauranteId,
+      restaurantId,
       createdAt: new Date(),
     });
 
     const result = await useCase.execute({
       ...input,
-      requisitos: undefined,
-      salario: undefined,
-      tipoContrato: ContractType.FREELANCER,
+      requirements: undefined,
+      salary: undefined,
+      contractType: ContractType.FREELANCER,
     });
 
-    expect(result.requisitos).toBeUndefined();
-    expect(result.salario).toBeUndefined();
+    expect(result.requirements).toBeUndefined();
+    expect(result.salary).toBeUndefined();
   });
 
   it('lança NotFoundException quando o restaurante não existe', async () => {

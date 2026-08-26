@@ -17,7 +17,7 @@ export class CreateJobPostingDto {
   @MaxLength(100, {
     message: 'O titulo não pode passar de 100 caracteres',
   })
-  titulo!: string;
+  title!: string;
 
   @IsString()
   @MinLength(20, {
@@ -26,22 +26,22 @@ export class CreateJobPostingDto {
   @MaxLength(2000, {
     message: 'A descrição não pode passar de 2000 caracteres',
   })
-  descricao!: string;
+  description!: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(1000, {
     message: 'O requisito não pode passar de 1000 caracteres',
   })
-  requisitos?: string;
+  requirements?: string;
 
   @IsOptional()
   @IsNumber()
   @Min(0, {
     message: 'O salário não pode ser negativo',
   })
-  salario?: number;
+  salary?: number;
 
   @IsEnum(ContractType)
-  tipoContrato!: ContractType;
+  contractType!: ContractType;
 }
