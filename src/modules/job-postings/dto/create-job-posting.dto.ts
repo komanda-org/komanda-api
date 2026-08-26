@@ -7,9 +7,11 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 import { ContractType } from '@prisma/client';
 
 export class CreateJobPostingDto {
+  @ApiProperty()
   @IsString()
   @MinLength(5, {
     message: 'O titulo deve ter ao menos 5 caracteres',
@@ -19,6 +21,7 @@ export class CreateJobPostingDto {
   })
   title!: string;
 
+  @ApiProperty()
   @IsString()
   @MinLength(20, {
     message: 'A descrição deve ter ao menos 20 caracteres',
@@ -28,6 +31,7 @@ export class CreateJobPostingDto {
   })
   description!: string;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
   @MaxLength(1000, {
@@ -35,6 +39,7 @@ export class CreateJobPostingDto {
   })
   requirements?: string;
 
+  @ApiProperty({ required: false })
   @IsOptional()
   @IsNumber()
   @Min(0, {
@@ -42,6 +47,7 @@ export class CreateJobPostingDto {
   })
   salary?: number;
 
+  @ApiProperty({ enum: ContractType })
   @IsEnum(ContractType)
   contractType!: ContractType;
 }

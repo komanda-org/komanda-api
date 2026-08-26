@@ -129,7 +129,8 @@ describe('Auth E2E', () => {
       const user = {
         id: '123',
         email: loginDto.email,
-        passwordHash: '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm',
+        passwordHash:
+          '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm',
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -154,7 +155,8 @@ describe('Auth E2E', () => {
       const user = {
         id: '123',
         email: loginDto.email,
-        passwordHash: '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm',
+        passwordHash:
+          '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm',
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: new Date(),
@@ -179,7 +181,8 @@ describe('Auth E2E', () => {
       const user = {
         id: '123',
         email: loginDto.email,
-        passwordHash: '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm',
+        passwordHash:
+          '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcg7b3XeKeUxWdeS86E36P4/KFm',
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,

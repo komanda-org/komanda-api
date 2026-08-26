@@ -7,9 +7,8 @@ import { PrismaModule } from 'src/prisma/prisma.module';
 import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-    imports: [PrismaModule, AuthModule],
-    controllers: [RestaurantsController, MyJobsController],
-    providers: [RegisterRestaurantUseCase, ListMyJobsUseCase]
+  imports: [PrismaModule, AuthModule],
+  controllers: [RestaurantsController],
+  providers: [RegisterRestaurantUseCase],
 })
-
-export class RestaurantsModule { }
+export class RestaurantsModule {}

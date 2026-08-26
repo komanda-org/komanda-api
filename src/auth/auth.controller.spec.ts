@@ -92,13 +92,16 @@ describe('AuthController', () => {
     it('should call requestPasswordRecoveryUseCase.execute with correct DTO', async () => {
       mockRequestPasswordRecoveryUseCase.execute.mockResolvedValue(undefined);
 
-      const result = await controller.recoverPassword(RECOVER_PASSWORD_DTO_FIXTURE);
+      const result = await controller.recoverPassword(
+        RECOVER_PASSWORD_DTO_FIXTURE,
+      );
 
       expect(mockRequestPasswordRecoveryUseCase.execute).toHaveBeenCalledWith(
         RECOVER_PASSWORD_DTO_FIXTURE,
       );
       expect(result).toEqual({
-        message: 'Se o e-mail constar em nossa base, as instruções foram enviadas',
+        message:
+          'Se o e-mail constar em nossa base, as instruções foram enviadas',
       });
     });
   });
