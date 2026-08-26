@@ -1,5 +1,6 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
@@ -18,6 +19,13 @@ export class AuthController {
   ) {}
 
   @Post('login')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({
+    login: {
+      limit: () => Number(process.env.AUTH_LOGIN_LIMIT ?? 5),
+      ttl: () => Number(process.env.AUTH_LOGIN_TTL_SECONDS ?? 60) * 1000,
+    },
+  })
   @HttpCode(200)
   @ApiOperation({ summary: 'Realizar login' })
   @ApiResponse({ status: 200, description: 'Login realizado com sucesso' })

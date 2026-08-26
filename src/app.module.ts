@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -9,6 +10,8 @@ import { ProfessionalsModule } from './modules/professionals/Professionals.modul
 import { RestaurantsModule } from './modules/restaurants/Restaurants.module';
 import { JobPostingsModule } from './modules/job-postings/job-postings.module';
 import { JobsModule } from './modules/jobs/Jobs.module';
+import { UsersModule } from './modules/users/users.module';
+import { ReviewsModule } from './modules/reviews/Reviews.module';
 
 @Module({
   imports: [
@@ -16,12 +19,28 @@ import { JobsModule } from './modules/jobs/Jobs.module';
       isGlobal: true,
       validationSchema: envValidationSchema,
     }),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        errorMessage: 'Muitas tentativas de login. Tente novamente em alguns minutos.',
+        throttlers: [
+          {
+            name: 'login',
+            limit: Number(configService.get<number>('AUTH_LOGIN_LIMIT') ?? 5),
+            ttl: Number(configService.get<number>('AUTH_LOGIN_TTL_SECONDS') ?? 60) * 1000,
+          },
+        ],
+      }),
+    }),
     AuthModule,
     PrismaModule,
     ProfessionalsModule,
     RestaurantsModule,
     JobPostingsModule,
     JobsModule,
+    UsersModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
