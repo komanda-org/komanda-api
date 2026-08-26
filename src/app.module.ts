@@ -10,6 +10,7 @@ import { ProfessionalsModule } from './modules/professionals/Professionals.modul
 import { RestaurantsModule } from './modules/restaurants/Restaurants.module';
 import { JobPostingsModule } from './modules/job-postings/job-postings.module';
 import { JobsModule } from './modules/jobs/Jobs.module';
+import { ReviewsModule } from './modules/reviews/Reviews.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { JobsModule } from './modules/jobs/Jobs.module';
     RestaurantsModule,
     JobPostingsModule,
     JobsModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
