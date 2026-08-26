@@ -69,7 +69,7 @@ model Professional {
   active          Boolean       @default(true)
   user            User          @relation(fields: [userId], references: [id])
   candidaturas    Candidatura[]
-  avaliacoes      Avaliacao[]
+  avaliacoes Avaliacao[]
 
   @@map("professionals")
 }
@@ -103,7 +103,7 @@ model Restaurant {
   active         Boolean   @default(true)
   user           User      @relation(fields: [userId], references: [id])
   jobs           Job[]
-  avaliacoes     Avaliacao[]
+  avaliacoes Avaliacao[]
 
   @@map("restaurants")
 }
@@ -166,6 +166,7 @@ model Avaliacao {
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   @@unique([professionalId, restaurantId, jobId, avaliadorRole])
+
   @@index([professionalId])
   @@index([restaurantId])
   @@index([jobId])
