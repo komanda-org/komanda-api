@@ -6,5 +6,7 @@ export interface SendPasswordRecoveryEmailParams {
 }
 
 export interface IMailProvider {
-  sendPasswordRecoveryEmail(params: SendPasswordRecoveryEmailParams): Promise<void>;
+  sendPasswordRecoveryEmail(
+    params: SendPasswordRecoveryEmailParams,
+  ): Promise<void>;
 }

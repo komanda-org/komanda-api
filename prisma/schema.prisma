@@ -70,6 +70,7 @@ model Professional {
   active          Boolean       @default(true)
   user            User          @relation(fields: [userId], references: [id])
   candidaturas    Candidatura[]
+  avaliacoes Avaliacao[]
 
   @@map("professionals")
 }
@@ -103,6 +104,7 @@ model Restaurant {
   active         Boolean   @default(true)
   user           User      @relation(fields: [userId], references: [id])
   jobs           Job[]
+  avaliacoes Avaliacao[]
 
   @@map("restaurants")
 }
@@ -124,6 +126,7 @@ model Job {
   deletedAt    DateTime?     @map("deleted_at")
   active       Boolean       @default(true)
   candidaturas Candidatura[]
+  avaliacoes   Avaliacao[]
 
   @@index([restaurantId])
   @@index([status])
@@ -158,4 +161,26 @@ model Notificacao {
 
   @@index([userId])
   @@map("notificacoes")
+model Avaliacao {
+  id             String       @id @default(uuid()) @db.VarChar(36)
+  rating         Int /// @min 1 @max 5
+  comment        String?      @db.Text
+  // Lado que escreveu a avaliação; o recebedor é sempre o lado oposto
+  // (profissional avalia restaurante, ou restaurante avalia profissional).
+  avaliadorRole  Role         @map("avaliador_role")
+  professional   Professional @relation(fields: [professionalId], references: [userId])
+  professionalId String       @db.VarChar(36)
+  restaurant     Restaurant   @relation(fields: [restaurantId], references: [userId])
+  restaurantId   String       @db.VarChar(36)
+  job            Job          @relation(fields: [jobId], references: [id])
+  jobId          String       @db.VarChar(36)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@unique([professionalId, restaurantId, jobId, avaliadorRole])
+
+  @@index([professionalId])
+  @@index([restaurantId])
+  @@index([jobId])
+  @@map("avaliacoes")
 }
