@@ -126,6 +126,7 @@ model Job {
   active       Boolean       @default(true)
   avaliacoes   Avaliacao[]
   candidaturas Candidatura[]
+  avaliacoes   Avaliacao[]
 
   @@index([restaurantId])
   @@index([status])

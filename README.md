@@ -54,6 +54,7 @@ A API estará disponível em `http://localhost:3000/api`.
 | `NODE_ENV` | Ambiente da aplicação | `development` |
 | `PORT` | Porta do servidor HTTP | `3000` |
 | `CORS_ORIGIN` | Origem permitida pelo CORS | `*` |
+| `DB_POOL_SIZE` | Máx. de conexões do pool por processo | `10` |
 
 ## Comandos
 

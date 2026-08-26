@@ -8,6 +8,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
@@ -17,9 +23,8 @@ import { ApplicationStatusResponseDto } from './dto/application-status-response.
 import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
 import { UpdateApplicationStatusUseCase } from './use-cases/update-application-status.use-case';
 
-// Controller próprio para o prefixo "vagas" (em português), separado do
-// JobPostingsController (que expõe "job-postings") para não alterar as
-// rotas já existentes de criação/candidatura/listagem.
+@ApiTags('Job Postings')
+@ApiBearerAuth()
 @Controller('vagas')
 @UseGuards(AuthGuard, RolesGuard)
 export class ApplicationStatusController {
@@ -30,6 +35,8 @@ export class ApplicationStatusController {
   @Patch(':vagaId/candidaturas/:candidaturaId/status')
   @HttpCode(HttpStatus.OK)
   @Roles(Role.RESTAURANTE)
+  @ApiOperation({ summary: 'Atualizar status da candidatura' })
+  @ApiResponse({ status: 200, description: 'Status atualizado com sucesso' })
   async updateStatus(
     @Param('vagaId') vagaId: string,
     @Param('candidaturaId') candidaturaId: string,
@@ -39,16 +46,16 @@ export class ApplicationStatusController {
     // A dona da vaga é conferida no use case contra o id do token — a rota
     // não recebe restauranteId de fora.
     const candidatura = await this.updateApplicationStatus.execute({
-      vagaId,
-      candidaturaId,
-      restauranteId: req.user.id,
+      jobId: vagaId,
+      applicationId: candidaturaId,
+      restaurantId: req.user.id,
       status: dto.status,
     });
 
     return new ApplicationStatusResponseDto({
       id: candidatura.id,
-      vagaId: candidatura.jobId,
-      profissionalId: candidatura.professionalId,
+      jobId: candidatura.jobId,
+      professionalId: candidatura.professionalId,
       status: candidatura.status,
       createdAt: candidatura.createdAt,
       updatedAt: candidatura.updatedAt,

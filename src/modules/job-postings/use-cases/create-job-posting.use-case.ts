@@ -4,12 +4,12 @@ import { ContractType, Prisma } from '@prisma/client';
 import { JobPostingResponseDto } from '../dto/job-posting-response.dto';
 
 interface CreateJobPostingInput {
-  titulo: string;
-  descricao: string;
-  requisitos?: string;
-  salario?: number;
-  tipoContrato: ContractType;
-  restauranteId: string;
+  title: string;
+  description: string;
+  requirements?: string;
+  salary?: number;
+  contractType: ContractType;
+  restaurantId: string;
 }
 
 @Injectable()
@@ -20,7 +20,7 @@ export class CreateJobPostingUseCase {
     // Camada 1: barra o restaurante inexistente antes de qualquer escrita.
     // Dá a mensagem clara e barata no caso normal (a maioria das requisições).
     const restaurante = await this.prisma.restaurant.findUnique({
-      where: { userId: input.restauranteId },
+      where: { userId: input.restaurantId },
       select: { userId: true, active: true, deletedAt: true },
     });
 
@@ -34,12 +34,12 @@ export class CreateJobPostingUseCase {
     try {
       const vaga = await this.prisma.job.create({
         data: {
-          title: input.titulo,
-          description: input.descricao,
-          requirements: input.requisitos,
-          salary: input.salario,
-          contractType: input.tipoContrato,
-          restaurantId: input.restauranteId,
+          title: input.title,
+          description: input.description,
+          requirements: input.requirements,
+          salary: input.salary,
+          contractType: input.contractType,
+          restaurantId: input.restaurantId,
         },
       });
 
@@ -47,13 +47,13 @@ export class CreateJobPostingUseCase {
       // do modelo Prisma não vazam para o consumidor da API.
       return {
         id: vaga.id,
-        titulo: vaga.title,
-        descricao: vaga.description,
-        requisitos: vaga.requirements ?? undefined,
-        salario: vaga.salary?.toNumber(),
-        tipoContrato: vaga.contractType,
+        title: vaga.title,
+        description: vaga.description,
+        requirements: vaga.requirements ?? undefined,
+        salary: vaga.salary?.toNumber(),
+        contractType: vaga.contractType,
         status: vaga.status,
-        restauranteId: vaga.restaurantId,
+        restaurantId: vaga.restaurantId,
         createdAt: vaga.createdAt,
       };
     } catch (error) {

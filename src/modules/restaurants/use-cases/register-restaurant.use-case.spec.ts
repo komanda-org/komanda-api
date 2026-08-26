@@ -105,7 +105,8 @@ describe('RegisterRestaurantUseCase', () => {
         restaurantName: 'Test Restaurant',
         cnpj: '12.345.678/0001-90',
         cuisineType: 'Brasileira',
-        description: 'Cozinha brasileira com enfoque em ingredientes regionais.',
+        description:
+          'Cozinha brasileira com enfoque em ingredientes regionais.',
         address: '123 Main Street',
         phone: '+55 11 99999-9999',
         zipCode: '01310-100',

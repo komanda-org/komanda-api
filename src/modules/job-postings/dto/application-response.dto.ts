@@ -5,10 +5,10 @@ export class ApplicationResponseDto {
   id: string;
 
   @Expose()
-  vagaId: string;
+  jobId: string;
 
   @Expose()
-  profissionalId: string;
+  professionalId: string;
 
   @Expose()
   createdAt: Date;

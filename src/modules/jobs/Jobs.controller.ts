@@ -6,6 +6,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { Roles } from 'src/auth/roles.decorator';
@@ -13,6 +19,8 @@ import { RolesGuard } from 'src/auth/roles.guard';
 import { ListJobsQueryDto } from './dto/list-jobs-query.dto';
 import { ListJobsUseCase } from './use-cases/list-jobs.use-case';
 
+@ApiTags('Jobs')
+@ApiBearerAuth()
 @Controller('jobs')
 @UseGuards(AuthGuard, RolesGuard)
 export class JobsController {
@@ -21,6 +29,8 @@ export class JobsController {
   @Get()
   @Roles(Role.PROFISSIONAL)
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Listar vagas disponíveis' })
+  @ApiResponse({ status: 200, description: 'Lista de vagas' })
   async listJobs(@Query() query: ListJobsQueryDto) {
     return await this.listJobsUseCase.execute(query);
   }
