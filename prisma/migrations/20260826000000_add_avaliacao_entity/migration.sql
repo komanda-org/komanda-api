@@ -3,6 +3,7 @@ CREATE TABLE "avaliacoes" (
     "id" VARCHAR(36) NOT NULL,
     "rating" INTEGER NOT NULL,
     "comment" TEXT,
+    "avaliador_role" "Role" NOT NULL,
     "professionalId" VARCHAR(36) NOT NULL,
     "restaurantId" VARCHAR(36) NOT NULL,
     "jobId" VARCHAR(36) NOT NULL,
@@ -13,6 +14,9 @@ CREATE TABLE "avaliacoes" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "avaliacoes_professionalId_restaurantId_jobId_avaliador_role_key" ON "avaliacoes"("professionalId", "restaurantId", "jobId", "avaliador_role");
+
+-- CreateIndex
 CREATE INDEX "avaliacoes_professionalId_idx" ON "avaliacoes"("professionalId");
 
 -- CreateIndex
@@ -20,9 +24,6 @@ CREATE INDEX "avaliacoes_restaurantId_idx" ON "avaliacoes"("restaurantId");
 
 -- CreateIndex
 CREATE INDEX "avaliacoes_jobId_idx" ON "avaliacoes"("jobId");
-
--- CreateIndex
-CREATE UNIQUE INDEX "avaliacoes_professionalId_restaurantId_jobId_key" ON "avaliacoes"("professionalId", "restaurantId", "jobId");
 
 -- AddForeignKey
 ALTER TABLE "avaliacoes" ADD CONSTRAINT "avaliacoes_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "professionals"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;

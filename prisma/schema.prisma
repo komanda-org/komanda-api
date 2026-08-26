@@ -151,8 +151,11 @@ model Candidatura {
 
 model Avaliacao {
   id             String       @id @default(uuid()) @db.VarChar(36)
-  rating         Int       /// @min 1 @max 5
-  comment        String?     @db.Text
+  rating         Int /// @min 1 @max 5
+  comment        String?      @db.Text
+  // Lado que escreveu a avaliação; o recebedor é sempre o lado oposto
+  // (profissional avalia restaurante, ou restaurante avalia profissional).
+  avaliadorRole  Role         @map("avaliador_role")
   professional   Professional @relation(fields: [professionalId], references: [userId])
   professionalId String       @db.VarChar(36)
   restaurant     Restaurant   @relation(fields: [restaurantId], references: [userId])
@@ -161,7 +164,8 @@ model Avaliacao {
   jobId          String       @db.VarChar(36)
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
-  @@unique([professionalId, restaurantId, jobId])
+
+  @@unique([professionalId, restaurantId, jobId, avaliadorRole])
 
   @@index([professionalId])
   @@index([restaurantId])
