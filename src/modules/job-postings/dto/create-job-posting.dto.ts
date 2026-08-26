@@ -19,7 +19,7 @@ export class CreateJobPostingDto {
   @MaxLength(100, {
     message: 'O titulo não pode passar de 100 caracteres',
   })
-  titulo!: string;
+  title!: string;
 
   @ApiProperty()
   @IsString()
@@ -29,7 +29,7 @@ export class CreateJobPostingDto {
   @MaxLength(2000, {
     message: 'A descrição não pode passar de 2000 caracteres',
   })
-  descricao!: string;
+  description!: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -37,7 +37,7 @@ export class CreateJobPostingDto {
   @MaxLength(1000, {
     message: 'O requisito não pode passar de 1000 caracteres',
   })
-  requisitos?: string;
+  requirements?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -45,9 +45,9 @@ export class CreateJobPostingDto {
   @Min(0, {
     message: 'O salário não pode ser negativo',
   })
-  salario?: number;
+  salary?: number;
 
   @ApiProperty({ enum: ContractType })
   @IsEnum(ContractType)
-  tipoContrato!: ContractType;
+  contractType!: ContractType;
 }

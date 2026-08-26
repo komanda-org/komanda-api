@@ -14,3 +14,5 @@
 process.env.DATABASE_URL =
   process.env.DATABASE_URL ?? 'postgresql://user:pass@localhost:5432/test';
 process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret';
+process.env.PASSWORD_RESET_TOKEN_PEPPER =
+  process.env.PASSWORD_RESET_TOKEN_PEPPER ?? 'test-pepper';

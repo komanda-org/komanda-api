@@ -1,3 +1,5 @@
+import { ConfigService } from '@nestjs/config';
+import { createHmac } from 'crypto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RequestPasswordRecoveryUseCase } from './request-password-recovery.use-case';
 
@@ -5,6 +7,8 @@ const MOCK_USER = {
   id: '550e8400-e29b-41d4-a716-446655440000',
   email: 'test@example.com',
 };
+
+const PEPPER_FIXTURE = 'test-pepper-fixture-nao-usar-em-producao';
 
 describe('RequestPasswordRecoveryUseCase', () => {
   let useCase: RequestPasswordRecoveryUseCase;
@@ -15,11 +19,16 @@ describe('RequestPasswordRecoveryUseCase', () => {
   const mockMailProvider = {
     sendPasswordRecoveryEmail: jest.fn(),
   };
+  const mockConfigService = {
+    getOrThrow: jest.fn().mockReturnValue(PEPPER_FIXTURE),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockConfigService.getOrThrow.mockReturnValue(PEPPER_FIXTURE);
     useCase = new RequestPasswordRecoveryUseCase(
       mockPrisma as unknown as PrismaService,
+      mockConfigService as unknown as ConfigService,
       mockMailProvider as any,
     );
   });
@@ -63,6 +72,27 @@ describe('RequestPasswordRecoveryUseCase', () => {
         to: MOCK_USER.email,
         token: expect.any(String),
       }),
+    );
+  });
+
+  it('should hash the token with the configured pepper', async () => {
+    mockPrisma.user.findFirst.mockResolvedValue(MOCK_USER);
+    mockPrisma.passwordResetToken.create.mockResolvedValue({});
+    mockPrisma.passwordResetToken.updateMany.mockResolvedValue({});
+
+    await useCase.execute({ email: MOCK_USER.email });
+
+    const { token } = mockMailProvider.sendPasswordRecoveryEmail.mock.calls[0][0];
+    const expectedHash = createHmac('sha256', PEPPER_FIXTURE)
+      .update(token)
+      .digest('hex');
+
+    const { tokenHash } = mockPrisma.passwordResetToken.create.mock.calls[0][0].data;
+
+    expect(tokenHash).toBe(expectedHash);
+    expect(tokenHash).not.toBe(token);
+    expect(mockConfigService.getOrThrow).toHaveBeenCalledWith(
+      'PASSWORD_RESET_TOKEN_PEPPER',
     );
   });
 });

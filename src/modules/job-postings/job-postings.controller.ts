@@ -53,12 +53,12 @@ export class JobPostingsController {
   ): Promise<JobPostingResponseDto> {
     // restauranteId vem do token, nunca do body (regra técnica da task).
     return this.createJobPosting.execute({
-      titulo: dto.titulo,
-      descricao: dto.descricao,
-      requisitos: dto.requisitos,
-      salario: dto.salario,
-      tipoContrato: dto.tipoContrato,
-      restauranteId: req.user.id,
+      title: dto.title,
+      description: dto.description,
+      requirements: dto.requirements,
+      salary: dto.salary,
+      contractType: dto.contractType,
+      restaurantId: req.user.id,
     });
   }
 
@@ -80,8 +80,8 @@ export class JobPostingsController {
 
     return new ApplicationResponseDto({
       id: candidatura.id,
-      vagaId: candidatura.jobId,
-      profissionalId: candidatura.professionalId,
+      jobId: candidatura.jobId,
+      professionalId: candidatura.professionalId,
       createdAt: candidatura.createdAt,
     });
   }
@@ -99,8 +99,8 @@ export class JobPostingsController {
     // A dona da vaga é conferida no use case contra o id do token — a rota
     // não recebe restauranteId de fora.
     return this.listJobApplicants.execute({
-      vagaId,
-      restauranteId: req.user.id,
+      jobId: vagaId,
+      restaurantId: req.user.id,
       status: query.status,
       skip: query.skip,
       take: query.take,
