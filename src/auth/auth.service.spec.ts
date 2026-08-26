@@ -10,8 +10,8 @@ import {
 } from './__fixtures__/auth.fixtures';
 import { createMockAuthCryptoService } from './__mocks__/auth-crypto.mock';
 import { createMockPrismaService } from './__mocks__/prisma.mock';
-import { AuthService } from './auth.service';
 import { AuthCryptoService } from './auth-crypto.service';
+import { AuthService } from './auth.service';
 import { UnauthorizedException, UserNotFoundException } from './exceptions';
 
 describe('AuthService', () => {
@@ -63,7 +63,13 @@ describe('AuthService', () => {
       mockAuthCrypto.compare.mockResolvedValue(false);
 
       await expect(service.login(LOGIN_DTO_INVALID_PASS)).rejects.toThrow(
-        UnauthorizedException,
+        new UnauthorizedException('Invalid password'),
+      );
+
+      expect(mockAuthCrypto.compare).toHaveBeenCalledTimes(1);
+      expect(mockAuthCrypto.compare).toHaveBeenCalledWith(
+        LOGIN_DTO_INVALID_PASS.password,
+        USER_FIXTURE.passwordHash,
       );
     });
 
@@ -71,17 +77,34 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue(USER_FIXTURE_DELETED);
 
       await expect(service.login(LOGIN_DTO_FIXTURE)).rejects.toThrow(
-        UnauthorizedException,
+        new UnauthorizedException('Conta não encontrada'),
       );
+
+      expect(mockAuthCrypto.compare).not.toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException when user account is inactive', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(USER_FIXTURE_INACTIVE);
-      mockAuthCrypto.compare.mockResolvedValue(true);
 
       await expect(service.login(LOGIN_DTO_FIXTURE)).rejects.toThrow(
-        UnauthorizedException,
+        new UnauthorizedException('User account is inactive'),
       );
+
+      expect(mockAuthCrypto.compare).not.toHaveBeenCalled();
+    });
+
+    it('should prioritize deleted account validation over inactive validation', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        ...USER_FIXTURE,
+        active: false,
+        deletedAt: new Date('2026-05-18'),
+      });
+
+      await expect(service.login(LOGIN_DTO_FIXTURE)).rejects.toThrow(
+        new UnauthorizedException('Conta não encontrada'),
+      );
+
+      expect(mockAuthCrypto.compare).not.toHaveBeenCalled();
     });
 
     it('should return token with id and role in payload', async () => {

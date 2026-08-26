@@ -50,9 +50,9 @@ describe('UpdateApplicationStatusUseCase', () => {
     prisma.candidatura.update.mockResolvedValue(atualizada);
 
     const result = await useCase.execute({
-      vagaId: VAGA_ID,
-      candidaturaId: CANDIDATURA_ID,
-      restauranteId: RESTAURANTE_ID,
+      jobId: VAGA_ID,
+      applicationId: CANDIDATURA_ID,
+      restaurantId: RESTAURANTE_ID,
       status: CandidaturaStatus.APROVADA,
     });
 
@@ -68,9 +68,9 @@ describe('UpdateApplicationStatusUseCase', () => {
 
     await expect(
       useCase.execute({
-        vagaId: VAGA_ID,
-        candidaturaId: CANDIDATURA_ID,
-        restauranteId: RESTAURANTE_ID,
+        jobId: VAGA_ID,
+        applicationId: CANDIDATURA_ID,
+        restaurantId: RESTAURANTE_ID,
         status: CandidaturaStatus.APROVADA,
       }),
     ).rejects.toThrow(NotFoundException);
@@ -85,9 +85,9 @@ describe('UpdateApplicationStatusUseCase', () => {
 
     await expect(
       useCase.execute({
-        vagaId: VAGA_ID,
-        candidaturaId: CANDIDATURA_ID,
-        restauranteId: RESTAURANTE_ID,
+        jobId: VAGA_ID,
+        applicationId: CANDIDATURA_ID,
+        restaurantId: RESTAURANTE_ID,
         status: CandidaturaStatus.APROVADA,
       }),
     ).rejects.toThrow(NotFoundException);
@@ -102,9 +102,9 @@ describe('UpdateApplicationStatusUseCase', () => {
 
     await expect(
       useCase.execute({
-        vagaId: VAGA_ID,
-        candidaturaId: CANDIDATURA_ID,
-        restauranteId: RESTAURANTE_ID,
+        jobId: VAGA_ID,
+        applicationId: CANDIDATURA_ID,
+        restaurantId: RESTAURANTE_ID,
         status: CandidaturaStatus.APROVADA,
       }),
     ).rejects.toThrow(NotFoundException);
@@ -119,9 +119,9 @@ describe('UpdateApplicationStatusUseCase', () => {
 
     await expect(
       useCase.execute({
-        vagaId: VAGA_ID,
-        candidaturaId: CANDIDATURA_ID,
-        restauranteId: RESTAURANTE_ID,
+        jobId: VAGA_ID,
+        applicationId: CANDIDATURA_ID,
+        restaurantId: RESTAURANTE_ID,
         status: CandidaturaStatus.APROVADA,
       }),
     ).rejects.toThrow(ForbiddenException);
@@ -138,9 +138,9 @@ describe('UpdateApplicationStatusUseCase', () => {
 
       await expect(
         useCase.execute({
-          vagaId: VAGA_ID,
-          candidaturaId: CANDIDATURA_ID,
-          restauranteId: RESTAURANTE_ID,
+          jobId: VAGA_ID,
+          applicationId: CANDIDATURA_ID,
+          restaurantId: RESTAURANTE_ID,
           status: CandidaturaStatus.PENDENTE,
         }),
       ).rejects.toThrow(UnprocessableEntityException);
@@ -157,9 +157,9 @@ describe('UpdateApplicationStatusUseCase', () => {
     prisma.candidatura.update.mockResolvedValue(atualizada);
 
     const result = await useCase.execute({
-      vagaId: VAGA_ID,
-      candidaturaId: CANDIDATURA_ID,
-      restauranteId: RESTAURANTE_ID,
+      jobId: VAGA_ID,
+      applicationId: CANDIDATURA_ID,
+      restaurantId: RESTAURANTE_ID,
       status: CandidaturaStatus.REJEITADA,
     });
 

@@ -4,11 +4,13 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import type { IMailProvider } from '../interfaces/mail-provider.interface';
 import { MAIL_PROVIDER } from '../interfaces/mail-provider.interface';
 import { RecoverPasswordDto } from '../dto/recover-password.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RequestPasswordRecoveryUseCase {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly configService: ConfigService,
     @Inject(MAIL_PROVIDER)
     private readonly mailProvider: IMailProvider,
   ) {}
@@ -35,8 +37,10 @@ export class RequestPasswordRecoveryUseCase {
 
     const token = randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-    const pepper = process.env.PASSWORD_RESET_TOKEN_PEPPER ?? '';
+  
+    const pepper = this.configService.getOrThrow<string>(
+      'PASSWORD_RESET_TOKEN_PEPPER',
+    );
     const tokenHash = createHmac('sha256', pepper).update(token).digest('hex');
 
     await this.prisma.passwordResetToken.create({

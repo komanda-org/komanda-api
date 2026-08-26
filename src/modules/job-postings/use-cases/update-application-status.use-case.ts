@@ -8,9 +8,9 @@ import { Candidatura, CandidaturaStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 interface UpdateApplicationStatusInput {
-  vagaId: string;
-  candidaturaId: string;
-  restauranteId: string;
+  jobId: string;
+  applicationId: string;
+  restaurantId: string;
   status: CandidaturaStatus;
 }
 
@@ -25,7 +25,7 @@ export class UpdateApplicationStatusUseCase {
 
   async execute(input: UpdateApplicationStatusInput): Promise<Candidatura> {
     const candidatura = await this.prisma.candidatura.findUnique({
-      where: { id: input.candidaturaId },
+      where: { id: input.applicationId },
       include: { job: true },
     });
 
@@ -33,14 +33,14 @@ export class UpdateApplicationStatusUseCase {
     // como inexistente para esta rota (mesmo critério do ListJobApplicantsUseCase).
     if (
       !candidatura ||
-      candidatura.jobId !== input.vagaId ||
+      candidatura.jobId !== input.jobId ||
       candidatura.job.deletedAt
     ) {
       throw new NotFoundException('Candidatura não encontrada');
     }
 
     // O restauranteId vem do token: um restaurante não altera candidaturas de vaga alheia.
-    if (candidatura.job.restaurantId !== input.restauranteId) {
+    if (candidatura.job.restaurantId !== input.restaurantId) {
       throw new ForbiddenException(
         'Você não tem permissão para alterar esta candidatura',
       );
@@ -56,7 +56,7 @@ export class UpdateApplicationStatusUseCase {
     }
 
     return this.prisma.candidatura.update({
-      where: { id: input.candidaturaId },
+      where: { id: input.applicationId },
       data: { status: input.status },
     });
   }

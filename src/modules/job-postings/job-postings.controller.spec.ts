@@ -70,12 +70,12 @@ describe('JobPostingsController', () => {
 
   it('should call createJobPostingUseCase.execute with mapped payload', async () => {
     const dto = {
-      titulo: 'Chef de Cozinha',
-      descricao:
+      title: 'Chef de Cozinha',
+      description:
         'Vaga para chef com experiência em cozinha italiana e gestão de equipe.',
-      requisitos: 'Experiência prévia, liderança e disponibilidade de horário.',
-      salario: 4500,
-      tipoContrato: ContractType.CLT,
+      requirements: 'Experiência prévia, liderança e disponibilidade de horário.',
+      salary: 4500,
+      contractType: ContractType.CLT,
     };
 
     const req = {
@@ -87,13 +87,13 @@ describe('JobPostingsController', () => {
 
     const result = {
       id: 'job-1',
-      titulo: dto.titulo,
-      descricao: dto.descricao,
-      requisitos: dto.requisitos,
-      salario: dto.salario,
-      tipoContrato: dto.tipoContrato,
+      title: dto.title,
+      description: dto.description,
+      requirements: dto.requirements,
+      salary: dto.salary,
+      contractType: dto.contractType,
       status: JobStatus.ABERTA,
-      restauranteId: req.user.id,
+      restaurantId: req.user.id,
       createdAt: new Date(),
     };
     // Guardamos a referência do spy: passar `createJobPostingUseCase.execute` solto para
@@ -104,12 +104,12 @@ describe('JobPostingsController', () => {
 
     expect(await controller.create(dto, req)).toBe(result);
     expect(executeSpy).toHaveBeenCalledWith({
-      titulo: dto.titulo,
-      descricao: dto.descricao,
-      requisitos: dto.requisitos,
-      salario: dto.salario,
-      tipoContrato: dto.tipoContrato,
-      restauranteId: req.user.id,
+      title: dto.title,
+      description: dto.description,
+      requirements: dto.requirements,
+      salary: dto.salary,
+      contractType: dto.contractType,
+      restaurantId: req.user.id,
     });
   });
 
@@ -138,8 +138,8 @@ describe('JobPostingsController', () => {
     expect(executeSpy).toHaveBeenCalledWith('job-1', 'professional-1');
     expect(result).toEqual({
       id: 'candidatura-1',
-      vagaId: 'job-1',
-      profissionalId: 'professional-1',
+      jobId: 'job-1',
+      professionalId: 'professional-1',
       createdAt,
     });
   });
@@ -167,8 +167,8 @@ describe('JobPostingsController', () => {
     );
 
     expect(executeSpy).toHaveBeenCalledWith({
-      vagaId: 'job-1',
-      restauranteId: 'restaurant-1',
+      jobId: 'job-1',
+      restaurantId: 'restaurant-1',
       status: CandidaturaStatus.PENDENTE,
       skip: 10,
       take: 5,

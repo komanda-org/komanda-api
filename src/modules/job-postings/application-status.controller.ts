@@ -39,16 +39,16 @@ export class ApplicationStatusController {
     // A dona da vaga é conferida no use case contra o id do token — a rota
     // não recebe restauranteId de fora.
     const candidatura = await this.updateApplicationStatus.execute({
-      vagaId,
-      candidaturaId,
-      restauranteId: req.user.id,
+      jobId: vagaId,
+      applicationId: candidaturaId,
+      restaurantId: req.user.id,
       status: dto.status,
     });
 
     return new ApplicationStatusResponseDto({
       id: candidatura.id,
-      vagaId: candidatura.jobId,
-      profissionalId: candidatura.professionalId,
+      jobId: candidatura.jobId,
+      professionalId: candidatura.professionalId,
       status: candidatura.status,
       createdAt: candidatura.createdAt,
       updatedAt: candidatura.updatedAt,

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import {
   LOGIN_DTO_FIXTURE,
   RECOVER_PASSWORD_DTO_FIXTURE,
@@ -30,7 +31,10 @@ describe('AuthController', () => {
         },
         { provide: ResetPasswordUseCase, useValue: mockResetPasswordUseCase },
       ],
-    }).compile();
+    })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: jest.fn().mockResolvedValue(true) })
+      .compile();
 
     controller = module.get<AuthController>(AuthController);
     module.get<AuthService>(AuthService);

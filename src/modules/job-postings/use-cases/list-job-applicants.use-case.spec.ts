@@ -21,7 +21,7 @@ describe('ListJobApplicantsUseCase', () => {
 
   const RESTAURANTE_ID = 'restaurant-1';
   const VAGA_ID = 'job-1';
-  const dataCandidatura = new Date('2026-07-10T12:00:00Z');
+  const applicationDate = new Date('2026-07-10T12:00:00Z');
 
   const vagaDoRestaurante = {
     restaurantId: RESTAURANTE_ID,
@@ -32,7 +32,7 @@ describe('ListJobApplicantsUseCase', () => {
   const candidaturaRow = {
     id: 'candidatura-1',
     status: CandidaturaStatus.PENDENTE,
-    createdAt: dataCandidatura,
+    createdAt: applicationDate,
     professional: {
       userId: 'professional-1',
       fullName: 'Maria Souza',
@@ -54,23 +54,23 @@ describe('ListJobApplicantsUseCase', () => {
     prisma.candidatura.count.mockResolvedValue(1);
 
     const result = await useCase.execute({
-      vagaId: VAGA_ID,
-      restauranteId: RESTAURANTE_ID,
+      jobId: VAGA_ID,
+      restaurantId: RESTAURANTE_ID,
     });
 
     expect(result).toEqual({
       data: [
         {
-          candidaturaId: 'candidatura-1',
+          applicationId: 'candidatura-1',
           status: CandidaturaStatus.PENDENTE,
-          dataCandidatura,
-          profissional: {
+          applicationDate,
+          professional: {
             id: 'professional-1',
-            nomeCompleto: 'Maria Souza',
-            cargoPrincipal: 'Cozinheira',
-            fotoPerfil: 'https://example.com/foto.png',
-            resumoExperiencias: '5 anos em cozinha italiana',
-            avaliacaoMedia: 4.5,
+            fullName: 'Maria Souza',
+            mainRole: 'Cozinheira',
+            profilePhoto: 'https://example.com/foto.png',
+            experienceSummary: '5 anos em cozinha italiana',
+            averageRating: 4.5,
           },
         },
       ],
@@ -86,8 +86,8 @@ describe('ListJobApplicantsUseCase', () => {
     prisma.candidatura.count.mockResolvedValue(0);
 
     const result = await useCase.execute({
-      vagaId: VAGA_ID,
-      restauranteId: RESTAURANTE_ID,
+      jobId: VAGA_ID,
+      restaurantId: RESTAURANTE_ID,
       skip: 10,
       take: 5,
     });
@@ -110,8 +110,8 @@ describe('ListJobApplicantsUseCase', () => {
     prisma.candidatura.count.mockResolvedValue(1);
 
     await useCase.execute({
-      vagaId: VAGA_ID,
-      restauranteId: RESTAURANTE_ID,
+      jobId: VAGA_ID,
+      restaurantId: RESTAURANTE_ID,
       status: CandidaturaStatus.PENDENTE,
     });
 
@@ -126,7 +126,7 @@ describe('ListJobApplicantsUseCase', () => {
     prisma.job.findUnique.mockResolvedValue(null);
 
     await expect(
-      useCase.execute({ vagaId: VAGA_ID, restauranteId: RESTAURANTE_ID }),
+      useCase.execute({ jobId: VAGA_ID, restaurantId: RESTAURANTE_ID }),
     ).rejects.toThrow(NotFoundException);
     expect(prisma.candidatura.findMany).not.toHaveBeenCalled();
   });
@@ -139,7 +139,7 @@ describe('ListJobApplicantsUseCase', () => {
     });
 
     await expect(
-      useCase.execute({ vagaId: VAGA_ID, restauranteId: RESTAURANTE_ID }),
+      useCase.execute({ jobId: VAGA_ID, restaurantId: RESTAURANTE_ID }),
     ).rejects.toThrow(NotFoundException);
   });
 
@@ -150,7 +150,7 @@ describe('ListJobApplicantsUseCase', () => {
     });
 
     await expect(
-      useCase.execute({ vagaId: VAGA_ID, restauranteId: RESTAURANTE_ID }),
+      useCase.execute({ jobId: VAGA_ID, restaurantId: RESTAURANTE_ID }),
     ).rejects.toThrow(ForbiddenException);
     expect(prisma.candidatura.findMany).not.toHaveBeenCalled();
   });
@@ -161,8 +161,8 @@ describe('ListJobApplicantsUseCase', () => {
     prisma.candidatura.count.mockResolvedValue(0);
 
     const result = await useCase.execute({
-      vagaId: VAGA_ID,
-      restauranteId: RESTAURANTE_ID,
+      jobId: VAGA_ID,
+      restaurantId: RESTAURANTE_ID,
     });
 
     expect(result.data).toEqual([]);
