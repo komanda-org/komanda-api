@@ -10,6 +10,7 @@ import { ProfessionalsModule } from './modules/professionals/Professionals.modul
 import { RestaurantsModule } from './modules/restaurants/Restaurants.module';
 import { JobPostingsModule } from './modules/job-postings/job-postings.module';
 import { JobsModule } from './modules/jobs/Jobs.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { UsersModule } from './modules/users/users.module';
 import { ReviewsModule } from './modules/reviews/Reviews.module';
 
@@ -39,6 +40,7 @@ import { ReviewsModule } from './modules/reviews/Reviews.module';
     RestaurantsModule,
     JobPostingsModule,
     JobsModule,
+    NotificationsModule,
     UsersModule,
     ReviewsModule,
   ],

@@ -1,50 +1,19 @@
--- CreateEnum
-CREATE TYPE "ApplicationStatus" AS ENUM ('PENDING', 'UNDER_REVIEW', 'REJECTED', 'APPROVED');
-
--- CreateEnum
-CREATE TYPE "Shift" AS ENUM ('MORNING', 'AFTERNOON', 'NIGHT');
-
--- CreateEnum
-CREATE TYPE "ContractType" AS ENUM ('CLT', 'FREELANCER', 'PJ', 'EVENT', 'TEMPORARY');
-
--- CreateEnum
-CREATE TYPE "JobStatus" AS ENUM ('ACTIVE', 'CLOSED', 'FILLED', 'EXPIRED');
-
 -- CreateTable
-CREATE TABLE "jobs" (
+CREATE TABLE "candidaturas" (
     "id" VARCHAR(36) NOT NULL,
-    "role" TEXT NOT NULL,
-    "shift" "Shift" NOT NULL,
-    "contract_type" "ContractType" NOT NULL,
-    "salary" DECIMAL(10,2),
-    "description" TEXT NOT NULL,
-    "urgent" BOOLEAN NOT NULL DEFAULT false,
-    "status" "JobStatus" NOT NULL DEFAULT 'ACTIVE',
-    "expires_at" TIMESTAMP(3) NOT NULL,
-    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMP(3) NOT NULL,
-    "deleted_at" TIMESTAMP(3),
-    "active" BOOLEAN NOT NULL DEFAULT true,
+    "jobId" VARCHAR(36) NOT NULL,
+    "professionalId" VARCHAR(36) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "jobs_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "applications" (
-    "id" VARCHAR(36) NOT NULL,
-    "job_id" VARCHAR(36) NOT NULL,
-    "professional_id" VARCHAR(36) NOT NULL,
-    "status" "ApplicationStatus" NOT NULL DEFAULT 'PENDING',
-    "applied_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "applications_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "candidaturas_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "applications_job_id_professional_id_key" ON "applications"("job_id", "professional_id");
+CREATE UNIQUE INDEX "candidaturas_jobId_professionalId_key" ON "candidaturas"("jobId", "professionalId");
 
--- AddForeignKey
-ALTER TABLE "applications" ADD CONSTRAINT "applications_job_id_fkey" FOREIGN KEY ("job_id") REFERENCES "jobs"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- CreateIndex
+CREATE INDEX "candidaturas_jobId_idx" ON "candidaturas"("jobId");
 
--- AddForeignKey
-ALTER TABLE "applications" ADD CONSTRAINT "applications_professional_id_fkey" FOREIGN KEY ("professional_id") REFERENCES "professionals"("user_id") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- CreateIndex
+CREATE INDEX "candidaturas_professionalId_idx" ON "candidaturas"("professionalId");

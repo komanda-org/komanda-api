@@ -4,7 +4,7 @@ CREATE TYPE "JobStatus" AS ENUM ('ABERTA', 'PAUSADA', 'ENCERRADA');
 
 -- CreateTable
 CREATE TABLE "Job" (
-    "id" UUID NOT NULL DEFAULT uuid_generate_v4(),
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "restaurantId" VARCHAR(36) NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE "Job" (
 
     CONSTRAINT "Job_pkey" PRIMARY KEY ("id"),
     CONSTRAINT "Job_restaurantId_fkey" FOREIGN KEY ("restaurantId")
-        REFERENCES "Restaurant"("userId") ON DELETE CASCADE
+        REFERENCES "restaurants"("user_id") ON DELETE CASCADE
 );
 
 -- CreateIndex
