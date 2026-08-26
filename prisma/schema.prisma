@@ -161,6 +161,8 @@ model Notificacao {
 
   @@index([userId])
   @@map("notificacoes")
+}
+
 model Avaliacao {
   id             String       @id @default(uuid()) @db.VarChar(36)
   rating         Int /// @min 1 @max 5
