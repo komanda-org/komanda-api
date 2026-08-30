@@ -1,12 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { ReviewsController } from './Reviews.controller';
+import { CreateReviewUseCase } from './use-cases/create-avaliacao.use-case';
 import { ListAvaliacoesRecebidasUseCase } from './use-cases/list-avaliacoes-recebidas.use-case';
 
 describe('ReviewsController', () => {
   let controller: ReviewsController;
   let listAvaliacoesRecebidasUseCase: ListAvaliacoesRecebidasUseCase;
+  let createReviewUseCase: CreateReviewUseCase;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -14,6 +17,12 @@ describe('ReviewsController', () => {
       providers: [
         {
           provide: ListAvaliacoesRecebidasUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: CreateReviewUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -34,6 +43,9 @@ describe('ReviewsController', () => {
     listAvaliacoesRecebidasUseCase = module.get<ListAvaliacoesRecebidasUseCase>(
       ListAvaliacoesRecebidasUseCase,
     );
+    createReviewUseCase = module.get<CreateReviewUseCase>(
+      CreateReviewUseCase,
+    );
   });
 
   it('should be defined', () => {
@@ -53,7 +65,7 @@ describe('ReviewsController', () => {
       .spyOn(listAvaliacoesRecebidasUseCase, 'execute')
       .mockResolvedValue(response);
 
-    const result = await controller.listAvaliacoesRecebidas('user-1', {
+    const result = await controller.listReceivedReviews('user-1', {
       skip: 10,
       take: 5,
     });
@@ -79,12 +91,53 @@ describe('ReviewsController', () => {
       .spyOn(listAvaliacoesRecebidasUseCase, 'execute')
       .mockResolvedValue(response);
 
-    const result = await controller.listAvaliacoesRecebidas('user-2', {});
+    const result = await controller.listReceivedReviews('user-2', {});
 
     expect(executeSpy).toHaveBeenCalledWith({
       usuarioId: 'user-2',
       skip: undefined,
       take: undefined,
+    });
+    expect(result).toBe(response);
+  });
+
+  it('cria avaliação usando o id do usuário autenticado do token', async () => {
+    const payload = {
+      id: 'user-profissional',
+      role: Role.PROFISSIONAL,
+    };
+    const dto = {
+      jobId: 'job-1',
+      receiverId: 'user-restaurante',
+      rating: 5,
+      comment: 'Excelente trabalho',
+    };
+    const response = {
+      id: 'avaliacao-1',
+      jobId: dto.jobId,
+      professionalId: payload.id,
+      restaurantId: dto.receiverId,
+      rating: dto.rating,
+      comment: dto.comment,
+      avaliadorRole: Role.PROFISSIONAL,
+      createdAt: new Date('2026-08-30T12:00:00Z'),
+      updatedAt: new Date('2026-08-30T12:00:00Z'),
+    } as any;
+
+    const executeSpy = jest
+      .spyOn(createReviewUseCase, 'execute')
+      .mockResolvedValue(response);
+
+    const result = await controller.createReview(dto as any, {
+      user: payload,
+    } as any);
+
+    expect(executeSpy).toHaveBeenCalledWith({
+      authorId: payload.id,
+      jobId: dto.jobId,
+      receiverId: dto.receiverId,
+      rating: dto.rating,
+      comment: dto.comment,
     });
     expect(result).toBe(response);
   });
