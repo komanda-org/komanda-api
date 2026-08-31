@@ -17,14 +17,19 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { ListJobsQueryDto } from './dto/list-jobs-query.dto';
+import { SearchJobsQueryDto } from './dto/search-jobs-query.dto';
 import { ListJobsUseCase } from './use-cases/list-jobs.use-case';
+import { SearchJobsUseCase } from './use-cases/search-jobs.use-case';
 
 @ApiTags('Jobs')
 @ApiBearerAuth()
 @Controller('jobs')
 @UseGuards(AuthGuard, RolesGuard)
 export class JobsController {
-  constructor(private readonly listJobsUseCase: ListJobsUseCase) {}
+  constructor(
+    private readonly listJobsUseCase: ListJobsUseCase,
+    private readonly searchJobsUseCase: SearchJobsUseCase,
+  ) { }
 
   @Get()
   @Roles(Role.PROFISSIONAL)
@@ -33,5 +38,14 @@ export class JobsController {
   @ApiResponse({ status: 200, description: 'Lista de vagas' })
   async listJobs(@Query() query: ListJobsQueryDto) {
     return await this.listJobsUseCase.execute(query);
+  }
+
+  @Get('search')
+  @Roles(Role.PROFISSIONAL)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Pesquisar vagas por termo, tipo de contrato e salário mínimo' })
+  @ApiResponse({ status: 200, description: 'Lista filtrada de vagas' })
+  async searchJobs(@Query() query: SearchJobsQueryDto) {
+    return await this.searchJobsUseCase.execute(query);
   }
 }

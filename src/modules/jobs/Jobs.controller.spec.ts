@@ -4,10 +4,12 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { JobsController } from './Jobs.controller';
 import { ListJobsUseCase } from './use-cases/list-jobs.use-case';
+import { SearchJobsUseCase } from './use-cases/search-jobs.use-case';
 
 describe('JobsController', () => {
   let controller: JobsController;
   let listJobsUseCase: ListJobsUseCase;
+  let searchJobsUseCase: SearchJobsUseCase;
 
   const mockListJobsResponse = {
     data: [
@@ -42,6 +44,12 @@ describe('JobsController', () => {
             execute: jest.fn(),
           },
         },
+        {
+          provide: SearchJobsUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
       ],
     })
       .overrideGuard(AuthGuard)
@@ -52,6 +60,7 @@ describe('JobsController', () => {
 
     controller = module.get<JobsController>(JobsController);
     listJobsUseCase = module.get<ListJobsUseCase>(ListJobsUseCase);
+    searchJobsUseCase = module.get<SearchJobsUseCase>(SearchJobsUseCase);
   });
 
   it('should be defined', () => {
@@ -84,5 +93,22 @@ describe('JobsController', () => {
     expect(result.data[0].restaurant.restaurantName).toBe(
       'Restaurante Exemplo',
     );
+  });
+
+  it('should call searchJobsUseCase.execute with search query params', async () => {
+    const query = {
+      termo: 'chef',
+      tipoContrato: ContractType.CLT,
+      salarioMinimo: 4000,
+      skip: 0,
+      take: 10,
+    };
+
+    jest.spyOn(searchJobsUseCase, 'execute').mockResolvedValue(mockListJobsResponse);
+
+    const result = await controller.searchJobs(query);
+
+    expect(result).toBe(mockListJobsResponse);
+    expect(searchJobsUseCase.execute).toHaveBeenCalledWith(query);
   });
 });

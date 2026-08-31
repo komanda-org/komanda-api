@@ -130,6 +130,8 @@ model Job {
 
   @@index([restaurantId])
   @@index([status])
+  @@index([title])
+  @@index([description])
   @@map("jobs")
 }
 
