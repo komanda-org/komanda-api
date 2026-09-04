@@ -13,17 +13,17 @@ import {
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
 import { RolesGuard } from 'src/auth/roles.guard';
-import { CreateReviewDto } from './dto/create-avaliacao.dto';
+import { CreateReviewDto } from './dto/create-review.dto';
 import { ListAvaliacoesQueryDto } from './dto/list-avaliacoes-query.dto';
 import { ListAvaliacoesResponseDto } from './dto/avaliacao-response.dto';
-import { CreateReviewUseCase } from './use-cases/create-avaliacao.use-case';
+import { CreateReviewUseCase } from './use-cases/create-review.use-case';
 import { ListAvaliacoesRecebidasUseCase } from './use-cases/list-avaliacoes-recebidas.use-case';
 
-@Controller()
+@Controller('usuarios')
 @UseGuards(AuthGuard, RolesGuard)
 export class ReviewsController {
   constructor(
-    private readonly listReviewsReceivedUseCase: ListAvaliacoesRecebidasUseCase,
+    private readonly listAvaliacoesRecebidasUseCase: ListAvaliacoesRecebidasUseCase,
     private readonly createReviewUseCase: CreateReviewUseCase,
   ) { }
 
@@ -42,13 +42,15 @@ export class ReviewsController {
     });
   }
 
-  @Get('users/:id/reviews')
+  // Sem @Roles: acessível por qualquer usuário autenticado, seja profissional
+  // ou restaurante consultando a reputação de outro perfil.
+  @Get(':id/avaliacoes')
   @HttpCode(HttpStatus.OK)
-  async listReceivedReviews(
+  async listAvaliacoesRecebidas(
     @Param('id') id: string,
     @Query() query: ListAvaliacoesQueryDto,
   ): Promise<ListAvaliacoesResponseDto> {
-    return this.listReviewsReceivedUseCase.execute({
+    return this.listAvaliacoesRecebidasUseCase.execute({
       usuarioId: id,
       skip: query.skip,
       take: query.take,

@@ -16,5 +16,3 @@ export class CreateReviewDto {
     @IsString()
     comment?: string;
 }
-
-export { CreateReviewDto as CreateAvaliacaoDto };

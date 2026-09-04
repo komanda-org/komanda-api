@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ReviewsController } from './Reviews.controller';
-import { CreateReviewUseCase } from './use-cases/create-avaliacao.use-case';
+import { CreateReviewUseCase } from './use-cases/create-review.use-case';
 import { ListAvaliacoesRecebidasUseCase } from './use-cases/list-avaliacoes-recebidas.use-case';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { AuthModule } from 'src/auth/auth.module';

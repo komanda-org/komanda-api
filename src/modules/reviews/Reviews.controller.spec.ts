@@ -1,9 +1,10 @@
+import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { ReviewsController } from './Reviews.controller';
-import { CreateReviewUseCase } from './use-cases/create-avaliacao.use-case';
+import { CreateReviewUseCase } from './use-cases/create-review.use-case';
 import { ListAvaliacoesRecebidasUseCase } from './use-cases/list-avaliacoes-recebidas.use-case';
 
 describe('ReviewsController', () => {
@@ -65,7 +66,7 @@ describe('ReviewsController', () => {
       .spyOn(listAvaliacoesRecebidasUseCase, 'execute')
       .mockResolvedValue(response);
 
-    const result = await controller.listReceivedReviews('user-1', {
+    const result = await controller.listAvaliacoesRecebidas('user-1', {
       skip: 10,
       take: 5,
     });
@@ -91,7 +92,7 @@ describe('ReviewsController', () => {
       .spyOn(listAvaliacoesRecebidasUseCase, 'execute')
       .mockResolvedValue(response);
 
-    const result = await controller.listReceivedReviews('user-2', {});
+    const result = await controller.listAvaliacoesRecebidas('user-2', {});
 
     expect(executeSpy).toHaveBeenCalledWith({
       usuarioId: 'user-2',
@@ -140,5 +141,45 @@ describe('ReviewsController', () => {
       comment: dto.comment,
     });
     expect(result).toBe(response);
+  });
+
+  it('cria avaliação sem comentário quando ele não é informado', async () => {
+    const payload = { id: 'user-profissional', role: Role.PROFISSIONAL };
+    const dto = {
+      jobId: 'job-1',
+      receiverId: 'user-restaurante',
+      rating: 4,
+    };
+
+    const executeSpy = jest
+      .spyOn(createReviewUseCase, 'execute')
+      .mockResolvedValue({ id: 'avaliacao-2' } as any);
+
+    await controller.createReview(dto as any, { user: payload } as any);
+
+    expect(executeSpy).toHaveBeenCalledWith({
+      authorId: payload.id,
+      jobId: dto.jobId,
+      receiverId: dto.receiverId,
+      rating: dto.rating,
+      comment: undefined,
+    });
+  });
+
+  it('propaga o erro lançado pelo use case ao criar avaliação', async () => {
+    const payload = { id: 'user-profissional', role: Role.PROFISSIONAL };
+    const dto = {
+      jobId: 'job-1',
+      receiverId: 'user-restaurante',
+      rating: 3,
+    };
+
+    jest
+      .spyOn(createReviewUseCase, 'execute')
+      .mockRejectedValue(new ForbiddenException('não permitido'));
+
+    await expect(
+      controller.createReview(dto as any, { user: payload } as any),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });
