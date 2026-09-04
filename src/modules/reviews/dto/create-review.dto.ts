@@ -1,18 +1,18 @@
 import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateReviewDto {
-    @IsString()
-    jobId!: string;
+  @IsString()
+  jobId!: string;
 
-    @IsString()
-    receiverId!: string;
+  @IsString()
+  receiverId!: string;
 
-    @IsInt()
-    @Min(1)
-    @Max(5)
-    rating!: number;
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  rating!: number;
 
-    @IsOptional()
-    @IsString()
-    comment?: string;
+  @IsOptional()
+  @IsString()
+  comment?: string;
 }
