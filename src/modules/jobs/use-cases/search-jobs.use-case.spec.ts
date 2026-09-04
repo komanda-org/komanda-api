@@ -3,90 +3,188 @@ import { SearchJobsUseCase } from './search-jobs.use-case';
 import { SearchJobsQueryDto } from '../dto/search-jobs-query.dto';
 
 describe('SearchJobsUseCase', () => {
-    let useCase: SearchJobsUseCase;
-    let mockPrisma: any;
+  let useCase: SearchJobsUseCase;
+  let mockPrisma: any;
 
-    const now = new Date();
+  const now = new Date();
 
-    const mockJob = {
-        id: 'job-1',
-        title: 'Chef de cozinha',
-        description: 'Preparação de pratos gourmet',
-        requirements: 'Experiência mínima de 2 anos',
-        salary: { toString: () => '5000.00' },
-        contractType: ContractType.CLT,
-        status: JobStatus.ABERTA,
-        restaurantId: 'restaurant-1',
-        restaurant: {
-            restaurantName: 'Restaurante Exemplo',
-            logoUrl: 'https://example.com/logo.png',
-        },
-        createdAt: now,
+  const mockJob = {
+    id: 'job-1',
+    title: 'Chef de cozinha',
+    description: 'Preparação de pratos gourmet',
+    requirements: 'Experiência mínima de 2 anos',
+    salary: { toString: () => '5000.00' },
+    contractType: ContractType.CLT,
+    status: JobStatus.ABERTA,
+    restaurantId: 'restaurant-1',
+    restaurant: {
+      restaurantName: 'Restaurante Exemplo',
+      logoUrl: 'https://example.com/logo.png',
+    },
+    createdAt: now,
+  };
+
+  const baseWhere = {
+    active: true,
+    deletedAt: null,
+    status: JobStatus.ABERTA,
+  };
+
+  beforeEach(() => {
+    mockPrisma = {
+      job: {
+        findMany: jest.fn().mockResolvedValue([mockJob]),
+        count: jest.fn().mockResolvedValue(1),
+      },
     };
 
-    beforeEach(() => {
-        mockPrisma = {
-            job: {
-                findMany: jest.fn(),
-                count: jest.fn(),
-            },
-        };
+    useCase = new SearchJobsUseCase(mockPrisma);
+  });
 
-        useCase = new SearchJobsUseCase(mockPrisma);
+  it('should apply all filters dynamically and return paginated results', async () => {
+    const query: SearchJobsQueryDto = {
+      termo: 'chef',
+      tipoContrato: ContractType.CLT,
+      salarioMinimo: 4000,
+      skip: 0,
+      take: 10,
+    };
+
+    const result = await useCase.execute(query);
+
+    expect(result.data).toHaveLength(1);
+    expect(result.total).toBe(1);
+    expect(result.skip).toBe(0);
+    expect(result.take).toBe(10);
+    expect(result.data[0].title).toBe('Chef de cozinha');
+    expect(result.data[0].contractType).toBe(ContractType.CLT);
+    expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          ...baseWhere,
+          contractType: ContractType.CLT,
+          salary: { gte: expect.any(Object) },
+          OR: [
+            { title: { contains: 'chef', mode: 'insensitive' } },
+            { description: { contains: 'chef', mode: 'insensitive' } },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it('should default skip and take when the query is completely empty', async () => {
+    mockPrisma.job.findMany.mockResolvedValue([]);
+    mockPrisma.job.count.mockResolvedValue(0);
+
+    const result = await useCase.execute({});
+
+    expect(result.skip).toBe(0);
+    expect(result.take).toBe(20);
+    expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: baseWhere,
+        skip: 0,
+        take: 20,
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
+  });
+
+  it('should keep the default open jobs feed when no filters are provided', async () => {
+    const query: SearchJobsQueryDto = { skip: 0, take: 20 };
+
+    mockPrisma.job.findMany.mockResolvedValue([]);
+    mockPrisma.job.count.mockResolvedValue(0);
+
+    const result = await useCase.execute(query);
+
+    expect(result.data).toEqual([]);
+    expect(result.total).toBe(0);
+    expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: baseWhere,
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
+  });
+
+  it('should only apply the termo filter when it is the only param sent', async () => {
+    await useCase.execute({ termo: '  chef  ' });
+
+    expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          ...baseWhere,
+          OR: [
+            { title: { contains: 'chef', mode: 'insensitive' } },
+            { description: { contains: 'chef', mode: 'insensitive' } },
+          ],
+        },
+      }),
+    );
+  });
+
+  it('should ignore a blank termo instead of filtering by an empty string', async () => {
+    await useCase.execute({ termo: '   ' });
+
+    expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: baseWhere }),
+    );
+  });
+
+  it('should only apply the tipoContrato filter when it is the only param sent', async () => {
+    await useCase.execute({ tipoContrato: ContractType.PJ });
+
+    expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { ...baseWhere, contractType: ContractType.PJ },
+      }),
+    );
+  });
+
+  it('should only apply the salarioMinimo filter when it is the only param sent', async () => {
+    await useCase.execute({ salarioMinimo: 3000 });
+
+    expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          ...baseWhere,
+          salary: { gte: expect.any(Object) },
+        },
+      }),
+    );
+
+    const [[callArgs]] = mockPrisma.job.findMany.mock.calls;
+    expect(callArgs.where.salary.gte.toString()).toBe('3000');
+  });
+
+  it('should apply salarioMinimo when it is zero', async () => {
+    await useCase.execute({ salarioMinimo: 0 });
+
+    expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          ...baseWhere,
+          salary: { gte: expect.any(Object) },
+        },
+      }),
+    );
+  });
+
+  it('should map the response fields, including a null salary', async () => {
+    mockPrisma.job.findMany.mockResolvedValue([{ ...mockJob, salary: null }]);
+
+    const result = await useCase.execute({});
+
+    expect(result.data[0]).toMatchObject({
+      id: 'job-1',
+      title: 'Chef de cozinha',
+      salary: null,
+      restaurant: {
+        restaurantName: 'Restaurante Exemplo',
+        logoUrl: 'https://example.com/logo.png',
+      },
     });
-
-    it('should apply all filters dynamically and return paginated results', async () => {
-        const query: SearchJobsQueryDto = {
-            termo: 'chef',
-            tipoContrato: ContractType.CLT,
-            salarioMinimo: 4000,
-            skip: 0,
-            take: 10,
-        };
-
-        mockPrisma.job.findMany.mockResolvedValue([mockJob]);
-        mockPrisma.job.count.mockResolvedValue(1);
-
-        const result = await useCase.execute(query);
-
-        expect(result.data).toHaveLength(1);
-        expect(result.total).toBe(1);
-        expect(result.skip).toBe(0);
-        expect(result.take).toBe(10);
-        expect(result.data[0].title).toBe('Chef de cozinha');
-        expect(result.data[0].contractType).toBe(ContractType.CLT);
-        expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
-            expect.objectContaining({
-                where: expect.objectContaining({
-                    status: JobStatus.ABERTA,
-                    active: true,
-                    deletedAt: null,
-                    contractType: ContractType.CLT,
-                    salary: { gte: expect.any(Object) },
-                }),
-            }),
-        );
-    });
-
-    it('should keep the default open jobs feed when no filters are provided', async () => {
-        const query: SearchJobsQueryDto = { skip: 0, take: 20 };
-
-        mockPrisma.job.findMany.mockResolvedValue([]);
-        mockPrisma.job.count.mockResolvedValue(0);
-
-        const result = await useCase.execute(query);
-
-        expect(result.data).toEqual([]);
-        expect(result.total).toBe(0);
-        expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
-            expect.objectContaining({
-                where: expect.objectContaining({
-                    status: JobStatus.ABERTA,
-                    active: true,
-                    deletedAt: null,
-                }),
-                orderBy: { createdAt: 'desc' },
-            }),
-        );
-    });
+  });
 });
