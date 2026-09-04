@@ -60,6 +60,7 @@ describe('SearchJobsUseCase', () => {
                 where: expect.objectContaining({
                     status: JobStatus.ABERTA,
                     active: true,
+                    deletedAt: null,
                     contractType: ContractType.CLT,
                     salary: { gte: expect.any(Object) },
                 }),
@@ -82,6 +83,7 @@ describe('SearchJobsUseCase', () => {
                 where: expect.objectContaining({
                     status: JobStatus.ABERTA,
                     active: true,
+                    deletedAt: null,
                 }),
                 orderBy: { createdAt: 'desc' },
             }),

@@ -14,6 +14,7 @@ export class SearchJobsUseCase {
 
         const where: Prisma.JobWhereInput = {
             active: true,
+            deletedAt: null,
             status: JobStatus.ABERTA,
         };
 

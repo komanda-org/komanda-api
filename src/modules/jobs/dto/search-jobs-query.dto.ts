@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
     IsEnum,
     IsInt,
+    IsNumber,
     IsOptional,
     IsString,
     Max,
@@ -24,7 +25,10 @@ export class SearchJobsQueryDto {
     @ApiProperty({ required: false })
     @IsOptional()
     @Type(() => Number)
-    @IsInt({ message: 'salarioMinimo deve ser um número inteiro' })
+    @IsNumber(
+        { maxDecimalPlaces: 2 },
+        { message: 'salarioMinimo deve ser um número com até duas casas decimais' },
+    )
     @Min(0, { message: 'salarioMinimo deve ser maior ou igual a zero' })
     salarioMinimo?: number;
 

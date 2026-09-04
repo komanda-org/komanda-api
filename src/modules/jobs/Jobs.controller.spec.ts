@@ -3,12 +3,10 @@ import { ContractType, JobStatus } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { JobsController } from './Jobs.controller';
-import { ListJobsUseCase } from './use-cases/list-jobs.use-case';
 import { SearchJobsUseCase } from './use-cases/search-jobs.use-case';
 
 describe('JobsController', () => {
   let controller: JobsController;
-  let listJobsUseCase: ListJobsUseCase;
   let searchJobsUseCase: SearchJobsUseCase;
 
   const mockListJobsResponse = {
@@ -39,12 +37,6 @@ describe('JobsController', () => {
       controllers: [JobsController],
       providers: [
         {
-          provide: ListJobsUseCase,
-          useValue: {
-            execute: jest.fn(),
-          },
-        },
-        {
           provide: SearchJobsUseCase,
           useValue: {
             execute: jest.fn(),
@@ -59,7 +51,6 @@ describe('JobsController', () => {
       .compile();
 
     controller = module.get<JobsController>(JobsController);
-    listJobsUseCase = module.get<ListJobsUseCase>(ListJobsUseCase);
     searchJobsUseCase = module.get<SearchJobsUseCase>(SearchJobsUseCase);
   });
 
@@ -67,24 +58,24 @@ describe('JobsController', () => {
     expect(controller).toBeDefined();
   });
 
-  it('should call listJobsUseCase.execute with query params', async () => {
+  it('should call searchJobsUseCase.execute for the default job feed', async () => {
     const query = { skip: 0, take: 20 };
 
     jest
-      .spyOn(listJobsUseCase, 'execute')
+      .spyOn(searchJobsUseCase, 'execute')
       .mockResolvedValue(mockListJobsResponse);
 
     const result = await controller.listJobs(query);
 
     expect(result).toBe(mockListJobsResponse);
-    expect(listJobsUseCase.execute).toHaveBeenCalledWith(query);
+    expect(searchJobsUseCase.execute).toHaveBeenCalledWith(query);
   });
 
   it('should return paginated job feed', async () => {
     const query = { skip: 0, take: 5 };
 
     jest
-      .spyOn(listJobsUseCase, 'execute')
+      .spyOn(searchJobsUseCase, 'execute')
       .mockResolvedValue({ ...mockListJobsResponse, take: 5 });
 
     const result = await controller.listJobs(query);
