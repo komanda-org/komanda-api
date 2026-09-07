@@ -1,26 +1,51 @@
 import { Injectable } from '@nestjs/common';
-import { JobStatus, PrismaClient } from '@prisma/client';
+import { JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ListJobsQueryDto } from '../dto/list-jobs-query.dto';
+import { SearchJobsQueryDto } from '../dto/search-jobs-query.dto';
 import { ListJobsResponseDto } from '../dto/job-response.dto';
 
 @Injectable()
-export class ListJobsUseCase {
+export class SearchJobsUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
-  async execute(query: ListJobsQueryDto): Promise<ListJobsResponseDto> {
+  async execute(query: SearchJobsQueryDto): Promise<ListJobsResponseDto> {
     const skip = query.skip ?? 0;
     const take = query.take ?? 20;
 
-    const where = {
-      status: JobStatus.ABERTA,
+    const where: Prisma.JobWhereInput = {
       active: true,
+      deletedAt: null,
+      status: JobStatus.ABERTA,
     };
 
-    const client = this.prisma as unknown as PrismaClient;
+    if (query.termo && query.termo.trim()) {
+      const termo = query.termo.trim();
+      where.OR = [
+        {
+          title: {
+            contains: termo,
+            mode: 'insensitive',
+          },
+        },
+        {
+          description: {
+            contains: termo,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+
+    if (query.tipoContrato) {
+      where.contractType = query.tipoContrato;
+    }
+
+    if (query.salarioMinimo !== undefined && query.salarioMinimo !== null) {
+      where.salary = { gte: new Prisma.Decimal(query.salarioMinimo) };
+    }
 
     const [jobs, total] = await Promise.all([
-      client.job.findMany({
+      this.prisma.job.findMany({
         where,
         skip,
         take,
@@ -34,7 +59,7 @@ export class ListJobsUseCase {
           },
         },
       }),
-      client.job.count({ where }),
+      this.prisma.job.count({ where }),
     ]);
 
     return {
