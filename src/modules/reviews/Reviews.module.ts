@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ReviewsController } from './Reviews.controller';
+import { CreateReviewUseCase } from './use-cases/create-review.use-case';
 import { ListAvaliacoesRecebidasUseCase } from './use-cases/list-avaliacoes-recebidas.use-case';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { AuthModule } from 'src/auth/auth.module';
@@ -7,6 +8,6 @@ import { AuthModule } from 'src/auth/auth.module';
 @Module({
   imports: [PrismaModule, AuthModule],
   controllers: [ReviewsController],
-  providers: [ListAvaliacoesRecebidasUseCase],
+  providers: [ListAvaliacoesRecebidasUseCase, CreateReviewUseCase],
 })
-export class ReviewsModule {}
+export class ReviewsModule { }
