@@ -45,15 +45,9 @@ export class SearchProfessionalsUseCase {
     ]);
 
     return {
-      data: professionals.map((professional) => ({
-        id: professional.userId,
-        fullName: professional.fullName,
-        mainRole: professional.mainRole,
-        interestedRoles: professional.interestedRoles,
-        profilePhoto: professional.profilePhoto,
-        experienceSummary: professional.experienceSummary,
-        neighborhood: professional.neighborhood,
-        averageRating: professional.averageRating,
+      data: professionals.map(({ userId, ...rest }) => ({
+        id: userId,
+        ...rest,
       })),
       total,
       skip,

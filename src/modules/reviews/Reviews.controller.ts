@@ -25,7 +25,7 @@ export class ReviewsController {
   constructor(
     private readonly listAvaliacoesRecebidasUseCase: ListAvaliacoesRecebidasUseCase,
     private readonly createReviewUseCase: CreateReviewUseCase,
-  ) { }
+  ) {}
 
   @Post('reviews')
   @HttpCode(HttpStatus.CREATED)

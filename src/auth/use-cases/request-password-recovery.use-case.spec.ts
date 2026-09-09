@@ -29,7 +29,7 @@ describe('RequestPasswordRecoveryUseCase', () => {
     useCase = new RequestPasswordRecoveryUseCase(
       mockPrisma as unknown as PrismaService,
       mockConfigService as unknown as ConfigService,
-      mockMailProvider as any,
+      mockMailProvider,
     );
   });
 
@@ -82,12 +82,14 @@ describe('RequestPasswordRecoveryUseCase', () => {
 
     await useCase.execute({ email: MOCK_USER.email });
 
-    const { token } = mockMailProvider.sendPasswordRecoveryEmail.mock.calls[0][0];
+    const { token } =
+      mockMailProvider.sendPasswordRecoveryEmail.mock.calls[0][0];
     const expectedHash = createHmac('sha256', PEPPER_FIXTURE)
       .update(token)
       .digest('hex');
 
-    const { tokenHash } = mockPrisma.passwordResetToken.create.mock.calls[0][0].data;
+    const { tokenHash } =
+      mockPrisma.passwordResetToken.create.mock.calls[0][0].data;
 
     expect(tokenHash).toBe(expectedHash);
     expect(tokenHash).not.toBe(token);
