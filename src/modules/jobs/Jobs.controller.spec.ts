@@ -95,7 +95,9 @@ describe('JobsController', () => {
       take: 10,
     };
 
-    jest.spyOn(searchJobsUseCase, 'execute').mockResolvedValue(mockListJobsResponse);
+    jest
+      .spyOn(searchJobsUseCase, 'execute')
+      .mockResolvedValue(mockListJobsResponse);
 
     const result = await controller.searchJobs(query);
 

@@ -92,7 +92,9 @@ export class UpdateMyProfileUseCase {
       }
     }
 
-    throw new ForbiddenException('Role não permitida para atualização de perfil');
+    throw new ForbiddenException(
+      'Role não permitida para atualização de perfil',
+    );
   }
 
   private async validatePayload<T extends object>(

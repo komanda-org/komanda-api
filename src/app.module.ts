@@ -24,12 +24,16 @@ import { ReviewsModule } from './modules/reviews/Reviews.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        errorMessage: 'Muitas tentativas de login. Tente novamente em alguns minutos.',
+        errorMessage:
+          'Muitas tentativas de login. Tente novamente em alguns minutos.',
         throttlers: [
           {
             name: 'login',
             limit: Number(configService.get<number>('AUTH_LOGIN_LIMIT') ?? 5),
-            ttl: Number(configService.get<number>('AUTH_LOGIN_TTL_SECONDS') ?? 60) * 1000,
+            ttl:
+              Number(
+                configService.get<number>('AUTH_LOGIN_TTL_SECONDS') ?? 60,
+              ) * 1000,
           },
         ],
       }),

@@ -9,4 +9,4 @@ import { AuthModule } from 'src/auth/auth.module';
   controllers: [JobsController],
   providers: [SearchJobsUseCase],
 })
-export class JobsModule { }
+export class JobsModule {}

@@ -73,7 +73,8 @@ describe('JobPostingsController', () => {
       title: 'Chef de Cozinha',
       description:
         'Vaga para chef com experiência em cozinha italiana e gestão de equipe.',
-      requirements: 'Experiência prévia, liderança e disponibilidade de horário.',
+      requirements:
+        'Experiência prévia, liderança e disponibilidade de horário.',
       salary: 4500,
       contractType: ContractType.CLT,
     };

@@ -44,9 +44,7 @@ describe('ReviewsController', () => {
     listAvaliacoesRecebidasUseCase = module.get<ListAvaliacoesRecebidasUseCase>(
       ListAvaliacoesRecebidasUseCase,
     );
-    createReviewUseCase = module.get<CreateReviewUseCase>(
-      CreateReviewUseCase,
-    );
+    createReviewUseCase = module.get<CreateReviewUseCase>(CreateReviewUseCase);
   });
 
   it('should be defined', () => {
@@ -129,9 +127,9 @@ describe('ReviewsController', () => {
       .spyOn(createReviewUseCase, 'execute')
       .mockResolvedValue(response);
 
-    const result = await controller.createReview(dto as any, {
+    const result = await controller.createReview(dto, {
       user: payload,
-    } as any);
+    });
 
     expect(executeSpy).toHaveBeenCalledWith({
       authorId: payload.id,
@@ -155,7 +153,7 @@ describe('ReviewsController', () => {
       .spyOn(createReviewUseCase, 'execute')
       .mockResolvedValue({ id: 'avaliacao-2' } as any);
 
-    await controller.createReview(dto as any, { user: payload } as any);
+    await controller.createReview(dto, { user: payload });
 
     expect(executeSpy).toHaveBeenCalledWith({
       authorId: payload.id,

@@ -37,7 +37,7 @@ export class RequestPasswordRecoveryUseCase {
 
     const token = randomUUID();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-  
+
     const pepper = this.configService.getOrThrow<string>(
       'PASSWORD_RESET_TOKEN_PEPPER',
     );
