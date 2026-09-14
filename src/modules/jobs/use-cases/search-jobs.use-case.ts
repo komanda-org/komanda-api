@@ -18,30 +18,30 @@ export class SearchJobsUseCase {
       status: JobStatus.ABERTA,
     };
 
-    if (query.termo && query.termo.trim()) {
-      const termo = query.termo.trim();
+    if (query.query && query.query.trim()) {
+      const search = query.query.trim();
       where.OR = [
         {
           title: {
-            contains: termo,
+            contains: search,
             mode: 'insensitive',
           },
         },
         {
           description: {
-            contains: termo,
+            contains: search,
             mode: 'insensitive',
           },
         },
       ];
     }
 
-    if (query.tipoContrato) {
-      where.contractType = query.tipoContrato;
+    if (query.contractType) {
+      where.contractType = query.contractType;
     }
 
-    if (query.salarioMinimo !== undefined && query.salarioMinimo !== null) {
-      where.salary = { gte: new Prisma.Decimal(query.salarioMinimo) };
+    if (query.minSalary !== undefined && query.minSalary !== null) {
+      where.salary = { gte: new Prisma.Decimal(query.minSalary) };
     }
 
     const [jobs, total] = await Promise.all([

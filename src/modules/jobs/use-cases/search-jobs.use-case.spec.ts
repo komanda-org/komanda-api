@@ -43,9 +43,9 @@ describe('SearchJobsUseCase', () => {
 
   it('should apply all filters dynamically and return paginated results', async () => {
     const query: SearchJobsQueryDto = {
-      termo: 'chef',
-      tipoContrato: ContractType.CLT,
-      salarioMinimo: 4000,
+      query: 'chef',
+      contractType: ContractType.CLT,
+      minSalary: 4000,
       skip: 0,
       take: 10,
     };
@@ -109,8 +109,8 @@ describe('SearchJobsUseCase', () => {
     );
   });
 
-  it('should only apply the termo filter when it is the only param sent', async () => {
-    await useCase.execute({ termo: '  chef  ' });
+  it('should only apply the query filter when it is the only param sent', async () => {
+    await useCase.execute({ query: '  chef  ' });
 
     expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -125,16 +125,16 @@ describe('SearchJobsUseCase', () => {
     );
   });
 
-  it('should ignore a blank termo instead of filtering by an empty string', async () => {
-    await useCase.execute({ termo: '   ' });
+  it('should ignore a blank query instead of filtering by an empty string', async () => {
+    await useCase.execute({ query: '   ' });
 
     expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: baseWhere }),
     );
   });
 
-  it('should only apply the tipoContrato filter when it is the only param sent', async () => {
-    await useCase.execute({ tipoContrato: ContractType.PJ });
+  it('should only apply the contractType filter when it is the only param sent', async () => {
+    await useCase.execute({ contractType: ContractType.PJ });
 
     expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -143,8 +143,8 @@ describe('SearchJobsUseCase', () => {
     );
   });
 
-  it('should only apply the salarioMinimo filter when it is the only param sent', async () => {
-    await useCase.execute({ salarioMinimo: 3000 });
+  it('should only apply the minSalary filter when it is the only param sent', async () => {
+    await useCase.execute({ minSalary: 3000 });
 
     expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -159,8 +159,8 @@ describe('SearchJobsUseCase', () => {
     expect(callArgs.where.salary.gte.toString()).toBe('3000');
   });
 
-  it('should apply salarioMinimo when it is zero', async () => {
-    await useCase.execute({ salarioMinimo: 0 });
+  it('should apply minSalary when it is zero', async () => {
+    await useCase.execute({ minSalary: 0 });
 
     expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
       expect.objectContaining({

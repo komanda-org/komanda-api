@@ -16,22 +16,22 @@ import { ListMyJobsQueryDto } from './dto/list-my-jobs-query.dto';
 import { ListMyJobsResponseDto } from './dto/my-job-response.dto';
 import { ListMyJobsUseCase } from './use-cases/list-my-jobs.use-case';
 
-@Controller('restaurantes')
+@Controller('users')
 @UseGuards(AuthGuard, RolesGuard)
 export class MyJobsController {
   constructor(private readonly listMyJobsUseCase: ListMyJobsUseCase) {}
 
-  @Get('me/vagas')
+  @Get('me/jobs')
   @HttpCode(HttpStatus.OK)
   @Roles(Role.RESTAURANTE)
   async listMyJobs(
     @Query() query: ListMyJobsQueryDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<ListMyJobsResponseDto> {
-    // restauranteId vem do token, nunca da query — o gestor só vê as vagas
+    // restaurantId vem do token, nunca da query — o gestor só vê as vagas
     // que ele mesmo publicou.
     return this.listMyJobsUseCase.execute({
-      restauranteId: req.user.id,
+      restaurantId: req.user.id,
       skip: query.skip,
       take: query.take,
     });

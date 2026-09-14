@@ -62,9 +62,9 @@ describe('MyApplicationsController', () => {
       req,
     );
 
-    // O profissionalId nunca pode vir da query ou do body, só do token.
+    // O professionalId nunca pode vir da query ou do body, só do token.
     expect(executeSpy).toHaveBeenCalledWith({
-      profissionalId: 'professional-1',
+      professionalId: 'professional-1',
       status: CandidaturaStatus.APROVADA,
       skip: 10,
       take: 5,
@@ -86,7 +86,7 @@ describe('MyApplicationsController', () => {
     const result = await controller.listMyApplications({}, req);
 
     expect(executeSpy).toHaveBeenCalledWith({
-      profissionalId: 'professional-2',
+      professionalId: 'professional-2',
       status: undefined,
       skip: undefined,
       take: undefined,

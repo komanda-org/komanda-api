@@ -10,20 +10,22 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { CreateReviewDto } from './dto/create-review.dto';
-import { ListAvaliacoesQueryDto } from './dto/list-avaliacoes-query.dto';
-import { ListAvaliacoesResponseDto } from './dto/avaliacao-response.dto';
+import { ListReviewsQueryDto } from './dto/list-reviews-query.dto';
+import { ListReviewsResponseDto } from './dto/review-response.dto';
 import { CreateReviewUseCase } from './use-cases/create-review.use-case';
-import { ListAvaliacoesRecebidasUseCase } from './use-cases/list-avaliacoes-recebidas.use-case';
+import { ListReceivedReviewsUseCase } from './use-cases/list-received-reviews.use-case';
 
-@Controller('usuarios')
+@ApiTags('Reviews')
+@Controller('users')
 @UseGuards(AuthGuard, RolesGuard)
 export class ReviewsController {
   constructor(
-    private readonly listAvaliacoesRecebidasUseCase: ListAvaliacoesRecebidasUseCase,
+    private readonly listReceivedReviewsUseCase: ListReceivedReviewsUseCase,
     private readonly createReviewUseCase: CreateReviewUseCase,
   ) {}
 
@@ -44,14 +46,14 @@ export class ReviewsController {
 
   // Sem @Roles: acessível por qualquer usuário autenticado, seja profissional
   // ou restaurante consultando a reputação de outro perfil.
-  @Get(':id/avaliacoes')
+  @Get(':id/reviews')
   @HttpCode(HttpStatus.OK)
-  async listAvaliacoesRecebidas(
+  async listReceivedReviews(
     @Param('id') id: string,
-    @Query() query: ListAvaliacoesQueryDto,
-  ): Promise<ListAvaliacoesResponseDto> {
-    return this.listAvaliacoesRecebidasUseCase.execute({
-      usuarioId: id,
+    @Query() query: ListReviewsQueryDto,
+  ): Promise<ListReviewsResponseDto> {
+    return this.listReceivedReviewsUseCase.execute({
+      userId: id,
       skip: query.skip,
       take: query.take,
     });

@@ -1,23 +1,23 @@
 import { CandidaturaStatus } from '@prisma/client';
 
 /** Recorte da vaga exposto no histórico do profissional. */
-export interface MyApplicationVagaDto {
+export interface MyApplicationJobDto {
   id: string;
-  titulo: string;
+  title: string;
 }
 
 /** Recorte do estabelecimento dono da vaga. */
-export interface MyApplicationRestauranteDto {
+export interface MyApplicationRestaurantDto {
   id: string;
-  nome: string;
+  name: string;
 }
 
 export interface MyApplicationDto {
-  candidaturaId: string;
+  applicationId: string;
   status: CandidaturaStatus;
-  dataCandidatura: Date;
-  vaga: MyApplicationVagaDto;
-  restaurante: MyApplicationRestauranteDto;
+  applicationDate: Date;
+  job: MyApplicationJobDto;
+  restaurant: MyApplicationRestaurantDto;
 }
 
 export interface ListMyApplicationsResponseDto {

@@ -33,7 +33,7 @@ import { ListJobApplicantsUseCase } from './use-cases/list-job-applicants.use-ca
 
 @ApiTags('Job Postings')
 @ApiBearerAuth()
-@Controller('job-postings')
+@Controller('jobs')
 @UseGuards(AuthGuard, RolesGuard)
 export class JobPostingsController {
   constructor(
@@ -51,7 +51,7 @@ export class JobPostingsController {
     @Body() dto: CreateJobPostingDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<JobPostingResponseDto> {
-    // restauranteId vem do token, nunca do body (regra técnica da task).
+    // restaurantId vem do token, nunca do body (regra técnica da task).
     return this.createJobPosting.execute({
       title: dto.title,
       description: dto.description,
@@ -62,44 +62,44 @@ export class JobPostingsController {
     });
   }
 
-  @Post(':id/candidaturas')
+  @Post(':id/applications')
   @HttpCode(HttpStatus.CREATED)
   @Roles(Role.PROFISSIONAL)
   @ApiOperation({ summary: 'Candidatar-se a uma vaga' })
   @ApiResponse({ status: 201, description: 'Candidatura criada com sucesso' })
   async apply(
-    @Param('id') vagaId: string,
+    @Param('id') jobId: string,
     @Body() _dto: CreateApplicationDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<ApplicationResponseDto> {
     // Mesma regra do create: o profissional vem do token, não do body.
-    const candidatura = await this.applyToJobPosting.execute(
-      vagaId,
+    const application = await this.applyToJobPosting.execute(
+      jobId,
       req.user.id,
     );
 
     return new ApplicationResponseDto({
-      id: candidatura.id,
-      jobId: candidatura.jobId,
-      professionalId: candidatura.professionalId,
-      createdAt: candidatura.createdAt,
+      id: application.id,
+      jobId: application.jobId,
+      professionalId: application.professionalId,
+      createdAt: application.createdAt,
     });
   }
 
-  @Get(':id/candidaturas')
+  @Get(':id/applications')
   @HttpCode(HttpStatus.OK)
   @Roles(Role.RESTAURANTE)
   @ApiOperation({ summary: 'Listar candidatos da vaga' })
   @ApiResponse({ status: 200, description: 'Lista de candidatos' })
   async listApplicants(
-    @Param('id') vagaId: string,
+    @Param('id') jobId: string,
     @Query() query: ListJobApplicantsQueryDto,
     @Req() req: AuthenticatedRequest,
   ): Promise<ListJobApplicantsResponseDto> {
     // A dona da vaga é conferida no use case contra o id do token — a rota
-    // não recebe restauranteId de fora.
+    // não recebe restaurantId de fora.
     return this.listJobApplicants.execute({
-      jobId: vagaId,
+      jobId,
       restaurantId: req.user.id,
       status: query.status,
       skip: query.skip,

@@ -33,7 +33,7 @@ export class AuthController {
     return await this.authService.login(loginDto);
   }
 
-  @Post('recuperar-senha')
+  @Post('recover-password')
   @HttpCode(200)
   @ApiOperation({ summary: 'Recuperar senha' })
   @ApiResponse({ status: 200, description: 'Instruções enviadas' })
@@ -46,7 +46,7 @@ export class AuthController {
     };
   }
 
-  @Post('resetar-senha')
+  @Post('reset-password')
   @HttpCode(200)
   @ApiOperation({ summary: 'Resetar senha' })
   @ApiResponse({ status: 200, description: 'Senha alterada com sucesso' })

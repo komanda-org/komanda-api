@@ -4,7 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ListMyJobsResponseDto } from '../dto/my-job-response.dto';
 
 interface ListMyJobsInput {
-  restauranteId: string;
+  restaurantId: string;
   skip?: number;
   take?: number;
 }
@@ -17,10 +17,10 @@ export class ListMyJobsUseCase {
     const skip = input.skip ?? 0;
     const take = input.take ?? 20;
 
-    // restauranteId vem sempre do token (ver controller) — o gestor só
+    // restaurantId vem sempre do token (ver controller) — o gestor só
     // enxerga as próprias vagas, nunca as de outro restaurante.
     const where: Prisma.JobWhereInput = {
-      restaurantId: input.restauranteId,
+      restaurantId: input.restaurantId,
       active: true,
       deletedAt: null,
     };
@@ -38,11 +38,11 @@ export class ListMyJobsUseCase {
     return {
       data: jobs.map((job) => ({
         id: job.id,
-        titulo: job.title,
-        descricao: job.description,
-        requisitos: job.requirements,
-        salario: job.salary?.toNumber() ?? null,
-        tipoContrato: job.contractType,
+        title: job.title,
+        description: job.description,
+        requirements: job.requirements,
+        salary: job.salary?.toNumber() ?? null,
+        contractType: job.contractType,
         status: job.status,
         createdAt: job.createdAt,
       })),

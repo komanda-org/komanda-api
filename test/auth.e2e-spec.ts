@@ -2,6 +2,11 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
+import {
+  ThrottlerModule,
+  ThrottlerStorage,
+  ThrottlerStorageService,
+} from '@nestjs/throttler';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { AuthModule } from '../src/auth/auth.module';
@@ -10,6 +15,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Auth E2E', () => {
   let app: INestApplication;
+  let throttlerStorage: ThrottlerStorageService;
 
   const mockPrismaService = {
     user: {
@@ -35,6 +41,15 @@ describe('Auth E2E', () => {
           isGlobal: true,
           validationSchema: envValidationSchema,
         }),
+        ThrottlerModule.forRoot({
+          throttlers: [
+            {
+              name: 'login',
+              limit: Number(process.env.AUTH_LOGIN_LIMIT ?? 5),
+              ttl: Number(process.env.AUTH_LOGIN_TTL_SECONDS ?? 60) * 1000,
+            },
+          ],
+        }),
         AuthModule,
       ],
     })
@@ -45,6 +60,10 @@ describe('Auth E2E', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    throttlerStorage = moduleFixture.get<ThrottlerStorageService>(
+      ThrottlerStorage,
+    );
+    app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -61,9 +80,12 @@ describe('Auth E2E', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    // Cada teste começa com o rate limiter zerado, exceto o que exercita o
+    // 429 deliberadamente dentro do próprio it().
+    throttlerStorage.storage.clear();
   });
 
-  describe('POST /auth/login', () => {
+  describe('POST /api/auth/login', () => {
     it('should return 200 with token on successful login', async () => {
       const loginDto = {
         email: 'test@example.com',
@@ -84,7 +106,7 @@ describe('Auth E2E', () => {
       mockPrismaService.user.findUnique.mockResolvedValue(user);
 
       const response = await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send(loginDto)
         .expect(200);
 
@@ -101,7 +123,7 @@ describe('Auth E2E', () => {
       };
 
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send(loginDto)
         .expect(400);
     });
@@ -115,7 +137,7 @@ describe('Auth E2E', () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
 
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send(loginDto)
         .expect(404);
     });
@@ -141,7 +163,7 @@ describe('Auth E2E', () => {
       mockPrismaService.user.findUnique.mockResolvedValue(user);
 
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send(loginDto)
         .expect(401);
     });
@@ -167,7 +189,7 @@ describe('Auth E2E', () => {
       mockPrismaService.user.findUnique.mockResolvedValue(user);
 
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send(loginDto)
         .expect(401);
     });
@@ -193,7 +215,7 @@ describe('Auth E2E', () => {
       mockPrismaService.user.findUnique.mockResolvedValue(user);
 
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send(loginDto)
         .expect(401);
     });
@@ -219,17 +241,17 @@ describe('Auth E2E', () => {
       mockPrismaService.user.findUnique.mockResolvedValue(user);
 
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send(loginDto)
         .expect(401);
 
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send(loginDto)
         .expect(401);
 
       await request(app.getHttpServer())
-        .post('/auth/login')
+        .post('/api/auth/login')
         .send(loginDto)
         .expect(429)
         .expect(({ body }) => {

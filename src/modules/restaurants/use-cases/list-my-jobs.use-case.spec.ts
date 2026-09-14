@@ -38,17 +38,17 @@ describe('ListMyJobsUseCase', () => {
     prisma.job.findMany.mockResolvedValue([jobRow]);
     prisma.job.count.mockResolvedValue(1);
 
-    const result = await useCase.execute({ restauranteId: RESTAURANTE_ID });
+    const result = await useCase.execute({ restaurantId: RESTAURANTE_ID });
 
     expect(result).toEqual({
       data: [
         {
           id: 'job-1',
-          titulo: 'Chef de Cozinha',
-          descricao: 'Responsável pela cozinha',
-          requisitos: 'Experiência mínima de 2 anos',
-          salario: 3500,
-          tipoContrato: ContractType.CLT,
+          title: 'Chef de Cozinha',
+          description: 'Responsável pela cozinha',
+          requirements: 'Experiência mínima de 2 anos',
+          salary: 3500,
+          contractType: ContractType.CLT,
           status: JobStatus.ABERTA,
           createdAt,
         },
@@ -63,7 +63,7 @@ describe('ListMyJobsUseCase', () => {
     prisma.job.findMany.mockResolvedValue([]);
     prisma.job.count.mockResolvedValue(0);
 
-    await useCase.execute({ restauranteId: RESTAURANTE_ID });
+    await useCase.execute({ restaurantId: RESTAURANTE_ID });
 
     const where = {
       restaurantId: RESTAURANTE_ID,
@@ -81,7 +81,7 @@ describe('ListMyJobsUseCase', () => {
     prisma.job.count.mockResolvedValue(0);
 
     const result = await useCase.execute({
-      restauranteId: RESTAURANTE_ID,
+      restaurantId: RESTAURANTE_ID,
       skip: 10,
       take: 5,
     });
@@ -97,7 +97,7 @@ describe('ListMyJobsUseCase', () => {
     prisma.job.findMany.mockResolvedValue([]);
     prisma.job.count.mockResolvedValue(0);
 
-    const result = await useCase.execute({ restauranteId: RESTAURANTE_ID });
+    const result = await useCase.execute({ restaurantId: RESTAURANTE_ID });
 
     expect(prisma.job.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ skip: 0, take: 20 }),
@@ -110,7 +110,7 @@ describe('ListMyJobsUseCase', () => {
     prisma.job.findMany.mockResolvedValue([]);
     prisma.job.count.mockResolvedValue(0);
 
-    const result = await useCase.execute({ restauranteId: RESTAURANTE_ID });
+    const result = await useCase.execute({ restaurantId: RESTAURANTE_ID });
 
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);

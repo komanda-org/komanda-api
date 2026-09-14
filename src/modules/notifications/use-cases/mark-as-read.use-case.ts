@@ -35,9 +35,9 @@ export class MarkAsReadUseCase {
 
     return {
       id: updated.id,
-      titulo: updated.titulo,
-      mensagem: updated.mensagem,
-      lida: updated.lida,
+      title: updated.titulo,
+      message: updated.mensagem,
+      read: updated.lida,
       createdAt: updated.createdAt,
     };
   }

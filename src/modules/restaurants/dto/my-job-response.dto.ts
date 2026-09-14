@@ -2,11 +2,11 @@ import { ContractType, JobStatus } from '@prisma/client';
 
 export interface MyJobDto {
   id: string;
-  titulo: string;
-  descricao: string;
-  requisitos: string | null;
-  salario: number | null;
-  tipoContrato: ContractType;
+  title: string;
+  description: string;
+  requirements: string | null;
+  salary: number | null;
+  contractType: ContractType;
   status: JobStatus;
   createdAt: Date;
 }

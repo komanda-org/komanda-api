@@ -57,9 +57,9 @@ describe('MyJobsController', () => {
 
     const result = await controller.listMyJobs({ skip: 10, take: 5 }, req);
 
-    // O restauranteId nunca pode vir da query ou do body, só do token.
+    // O restaurantId nunca pode vir da query ou do body, só do token.
     expect(executeSpy).toHaveBeenCalledWith({
-      restauranteId: 'restaurant-1',
+      restaurantId: 'restaurant-1',
       skip: 10,
       take: 5,
     });
@@ -80,7 +80,7 @@ describe('MyJobsController', () => {
     const result = await controller.listMyJobs({}, req);
 
     expect(executeSpy).toHaveBeenCalledWith({
-      restauranteId: 'restaurant-2',
+      restaurantId: 'restaurant-2',
       skip: undefined,
       take: undefined,
     });
