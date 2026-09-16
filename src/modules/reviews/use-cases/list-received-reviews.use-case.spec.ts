@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ListAvaliacoesRecebidasUseCase } from './list-avaliacoes-recebidas.use-case';
+import { ListReceivedReviewsUseCase } from './list-received-reviews.use-case';
 
 const createMockPrisma = () => ({
   user: {
@@ -16,27 +16,27 @@ const createMockPrisma = () => ({
 
 type MockPrisma = ReturnType<typeof createMockPrisma>;
 
-describe('ListAvaliacoesRecebidasUseCase', () => {
-  let useCase: ListAvaliacoesRecebidasUseCase;
+describe('ListReceivedReviewsUseCase', () => {
+  let useCase: ListReceivedReviewsUseCase;
   let prisma: MockPrisma;
 
-  const PROFISSIONAL_ID = 'professional-1';
-  const RESTAURANTE_ID = 'restaurant-1';
+  const PROFESSIONAL_ID = 'professional-1';
+  const RESTAURANT_ID = 'restaurant-1';
   const createdAt = new Date('2026-07-10T12:00:00Z');
 
-  const avaliacaoRow = {
-    id: 'avaliacao-1',
+  const reviewRow = {
+    id: 'review-1',
     rating: 5,
     comment: 'Excelente profissional',
     jobId: 'job-1',
-    professionalId: PROFISSIONAL_ID,
-    restaurantId: RESTAURANTE_ID,
+    professionalId: PROFESSIONAL_ID,
+    restaurantId: RESTAURANT_ID,
     createdAt,
   };
 
   beforeEach(() => {
     prisma = createMockPrisma();
-    useCase = new ListAvaliacoesRecebidasUseCase(
+    useCase = new ListReceivedReviewsUseCase(
       prisma as unknown as PrismaService,
     );
   });
@@ -45,7 +45,7 @@ describe('ListAvaliacoesRecebidasUseCase', () => {
     prisma.user.findUnique.mockResolvedValue(null);
 
     await expect(
-      useCase.execute({ usuarioId: PROFISSIONAL_ID }),
+      useCase.execute({ userId: PROFESSIONAL_ID }),
     ).rejects.toBeInstanceOf(NotFoundException);
 
     expect(prisma.avaliacao.findMany).not.toHaveBeenCalled();
@@ -59,7 +59,7 @@ describe('ListAvaliacoesRecebidasUseCase', () => {
     });
 
     await expect(
-      useCase.execute({ usuarioId: PROFISSIONAL_ID }),
+      useCase.execute({ userId: PROFESSIONAL_ID }),
     ).rejects.toBeInstanceOf(NotFoundException);
 
     expect(prisma.avaliacao.findMany).not.toHaveBeenCalled();
@@ -71,14 +71,14 @@ describe('ListAvaliacoesRecebidasUseCase', () => {
       active: true,
       deletedAt: null,
     });
-    prisma.avaliacao.findMany.mockResolvedValue([avaliacaoRow]);
+    prisma.avaliacao.findMany.mockResolvedValue([reviewRow]);
     prisma.avaliacao.count.mockResolvedValue(1);
     prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: 5 } });
 
-    const result = await useCase.execute({ usuarioId: PROFISSIONAL_ID });
+    const result = await useCase.execute({ userId: PROFESSIONAL_ID });
 
     const where = {
-      professionalId: PROFISSIONAL_ID,
+      professionalId: PROFESSIONAL_ID,
       avaliadorRole: Role.RESTAURANTE,
     };
     expect(prisma.avaliacao.findMany).toHaveBeenCalledWith(
@@ -93,11 +93,11 @@ describe('ListAvaliacoesRecebidasUseCase', () => {
     expect(result).toEqual({
       data: [
         {
-          id: 'avaliacao-1',
+          id: 'review-1',
           rating: 5,
           comment: 'Excelente profissional',
           jobId: 'job-1',
-          avaliadorId: RESTAURANTE_ID,
+          reviewerId: RESTAURANT_ID,
           createdAt,
         },
       ],
@@ -114,20 +114,20 @@ describe('ListAvaliacoesRecebidasUseCase', () => {
       active: true,
       deletedAt: null,
     });
-    prisma.avaliacao.findMany.mockResolvedValue([avaliacaoRow]);
+    prisma.avaliacao.findMany.mockResolvedValue([reviewRow]);
     prisma.avaliacao.count.mockResolvedValue(1);
     prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: 5 } });
 
-    const result = await useCase.execute({ usuarioId: RESTAURANTE_ID });
+    const result = await useCase.execute({ userId: RESTAURANT_ID });
 
     const where = {
-      restaurantId: RESTAURANTE_ID,
+      restaurantId: RESTAURANT_ID,
       avaliadorRole: Role.PROFISSIONAL,
     };
     expect(prisma.avaliacao.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where }),
     );
-    expect(result.data[0].avaliadorId).toBe(PROFISSIONAL_ID);
+    expect(result.data[0].reviewerId).toBe(PROFESSIONAL_ID);
   });
 
   it('aplica skip/take informados na paginação', async () => {
@@ -141,7 +141,7 @@ describe('ListAvaliacoesRecebidasUseCase', () => {
     prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: null } });
 
     const result = await useCase.execute({
-      usuarioId: PROFISSIONAL_ID,
+      userId: PROFESSIONAL_ID,
       skip: 10,
       take: 5,
     });
@@ -163,7 +163,7 @@ describe('ListAvaliacoesRecebidasUseCase', () => {
     prisma.avaliacao.count.mockResolvedValue(0);
     prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: null } });
 
-    const result = await useCase.execute({ usuarioId: PROFISSIONAL_ID });
+    const result = await useCase.execute({ userId: PROFESSIONAL_ID });
 
     expect(prisma.avaliacao.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ skip: 0, take: 20 }),
@@ -182,7 +182,7 @@ describe('ListAvaliacoesRecebidasUseCase', () => {
     prisma.avaliacao.count.mockResolvedValue(0);
     prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: null } });
 
-    const result = await useCase.execute({ usuarioId: PROFISSIONAL_ID });
+    const result = await useCase.execute({ userId: PROFESSIONAL_ID });
 
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);

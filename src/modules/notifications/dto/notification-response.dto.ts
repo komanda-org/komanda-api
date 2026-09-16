@@ -1,7 +1,7 @@
 export interface NotificationResponseDto {
   id: string;
-  titulo: string;
-  mensagem: string;
-  lida: boolean;
+  title: string;
+  message: string;
+  read: boolean;
   createdAt: Date;
 }

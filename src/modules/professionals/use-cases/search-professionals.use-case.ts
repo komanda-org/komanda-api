@@ -17,8 +17,8 @@ export class SearchProfessionalsUseCase {
     const where: Prisma.ProfessionalWhereInput = {
       active: true,
       deletedAt: null,
-      ...(query.cargo
-        ? { mainRole: { contains: query.cargo, mode: 'insensitive' } }
+      ...(query.position
+        ? { mainRole: { contains: query.position, mode: 'insensitive' } }
         : {}),
     };
 

@@ -4,7 +4,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { ListMyApplicationsResponseDto } from '../dto/my-application-response.dto';
 
 interface ListMyApplicationsInput {
-  profissionalId: string;
+  professionalId: string;
   status?: CandidaturaStatus;
   skip?: number;
   take?: number;
@@ -20,14 +20,14 @@ export class ListMyApplicationsUseCase {
     const skip = input.skip ?? 0;
     const take = input.take ?? 20;
 
-    // profissionalId vem sempre do token (ver controller) — o profissional
+    // professionalId vem sempre do token (ver controller) — o profissional
     // só enxerga o próprio histórico, nunca o de terceiros.
     const where: Prisma.CandidaturaWhereInput = {
-      professionalId: input.profissionalId,
+      professionalId: input.professionalId,
       ...(input.status ? { status: input.status } : {}),
     };
 
-    const [candidaturas, total] = await Promise.all([
+    const [applications, total] = await Promise.all([
       this.prisma.candidatura.findMany({
         where,
         skip,
@@ -57,17 +57,17 @@ export class ListMyApplicationsUseCase {
     ]);
 
     return {
-      data: candidaturas.map((candidatura) => ({
-        candidaturaId: candidatura.id,
-        status: candidatura.status,
-        dataCandidatura: candidatura.createdAt,
-        vaga: {
-          id: candidatura.job.id,
-          titulo: candidatura.job.title,
+      data: applications.map((application) => ({
+        applicationId: application.id,
+        status: application.status,
+        applicationDate: application.createdAt,
+        job: {
+          id: application.job.id,
+          title: application.job.title,
         },
-        restaurante: {
-          id: candidatura.job.restaurant.userId,
-          nome: candidatura.job.restaurant.restaurantName,
+        restaurant: {
+          id: application.job.restaurant.userId,
+          name: application.job.restaurant.restaurantName,
         },
       })),
       total,

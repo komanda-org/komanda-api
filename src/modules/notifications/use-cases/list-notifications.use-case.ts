@@ -37,9 +37,9 @@ export class ListNotificationsUseCase {
     return {
       data: data.map((n) => ({
         id: n.id,
-        titulo: n.titulo,
-        mensagem: n.mensagem,
-        lida: n.lida,
+        title: n.titulo,
+        message: n.mensagem,
+        read: n.lida,
         createdAt: n.createdAt,
       })),
       total,

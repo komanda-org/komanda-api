@@ -22,19 +22,16 @@ import { ListMyApplicationsQueryDto } from './dto/list-my-applications-query.dto
 import { ListMyApplicationsResponseDto } from './dto/my-application-response.dto';
 import { ListMyApplicationsUseCase } from './use-cases/list-my-applications.use-case';
 
-// Controller próprio para o prefixo "profissionais" (em português),
-// separado do ProfessionalsController (que expõe "professionals" para o
-// cadastro) para não alterar a rota de registro já existente.
 @ApiTags('Professionals')
 @ApiBearerAuth()
-@Controller('profissionais')
+@Controller('users')
 @UseGuards(AuthGuard, RolesGuard)
 export class MyApplicationsController {
   constructor(
     private readonly listMyApplicationsUseCase: ListMyApplicationsUseCase,
   ) {}
 
-  @Get('me/candidaturas')
+  @Get('me/applications')
   @HttpCode(HttpStatus.OK)
   @Roles(Role.PROFISSIONAL)
   @ApiOperation({ summary: 'Listar minhas candidaturas' })
@@ -46,7 +43,7 @@ export class MyApplicationsController {
     // O id do profissional vem do token (middleware de autenticação),
     // nunca de parâmetro de rota ou body.
     return this.listMyApplicationsUseCase.execute({
-      profissionalId: req.user.id,
+      professionalId: req.user.id,
       status: query.status,
       skip: query.skip,
       take: query.take,

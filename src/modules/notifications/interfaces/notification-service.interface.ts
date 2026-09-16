@@ -1,7 +1,7 @@
 export interface INotificacaoService {
   create(params: {
     userId: string;
-    titulo: string;
-    mensagem: string;
+    title: string;
+    message: string;
   }): void | Promise<void>;
 }

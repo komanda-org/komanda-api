@@ -4,13 +4,13 @@ import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { RegisterRestaurantUseCase } from './use-cases/register-restaurant.use-case';
 
 @ApiTags('Restaurants')
-@Controller('restaurantes')
+@Controller('restaurants')
 export class RestaurantsController {
   constructor(
     private readonly registerRestaurantUseCase: RegisterRestaurantUseCase,
   ) {}
 
-  @Post('cadastro')
+  @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Cadastrar restaurante' })
   @ApiResponse({ status: 201, description: 'Restaurante criado com sucesso' })

@@ -5,11 +5,11 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { ReviewsController } from './Reviews.controller';
 import { CreateReviewUseCase } from './use-cases/create-review.use-case';
-import { ListAvaliacoesRecebidasUseCase } from './use-cases/list-avaliacoes-recebidas.use-case';
+import { ListReceivedReviewsUseCase } from './use-cases/list-received-reviews.use-case';
 
 describe('ReviewsController', () => {
   let controller: ReviewsController;
-  let listAvaliacoesRecebidasUseCase: ListAvaliacoesRecebidasUseCase;
+  let listReceivedReviewsUseCase: ListReceivedReviewsUseCase;
   let createReviewUseCase: CreateReviewUseCase;
 
   beforeEach(async () => {
@@ -17,7 +17,7 @@ describe('ReviewsController', () => {
       controllers: [ReviewsController],
       providers: [
         {
-          provide: ListAvaliacoesRecebidasUseCase,
+          provide: ListReceivedReviewsUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -41,8 +41,8 @@ describe('ReviewsController', () => {
       .compile();
 
     controller = module.get<ReviewsController>(ReviewsController);
-    listAvaliacoesRecebidasUseCase = module.get<ListAvaliacoesRecebidasUseCase>(
-      ListAvaliacoesRecebidasUseCase,
+    listReceivedReviewsUseCase = module.get<ListReceivedReviewsUseCase>(
+      ListReceivedReviewsUseCase,
     );
     createReviewUseCase = module.get<CreateReviewUseCase>(CreateReviewUseCase);
   });
@@ -61,16 +61,16 @@ describe('ReviewsController', () => {
     };
 
     const executeSpy = jest
-      .spyOn(listAvaliacoesRecebidasUseCase, 'execute')
+      .spyOn(listReceivedReviewsUseCase, 'execute')
       .mockResolvedValue(response);
 
-    const result = await controller.listAvaliacoesRecebidas('user-1', {
+    const result = await controller.listReceivedReviews('user-1', {
       skip: 10,
       take: 5,
     });
 
     expect(executeSpy).toHaveBeenCalledWith({
-      usuarioId: 'user-1',
+      userId: 'user-1',
       skip: 10,
       take: 5,
     });
@@ -87,13 +87,13 @@ describe('ReviewsController', () => {
     };
 
     const executeSpy = jest
-      .spyOn(listAvaliacoesRecebidasUseCase, 'execute')
+      .spyOn(listReceivedReviewsUseCase, 'execute')
       .mockResolvedValue(response);
 
-    const result = await controller.listAvaliacoesRecebidas('user-2', {});
+    const result = await controller.listReceivedReviews('user-2', {});
 
     expect(executeSpy).toHaveBeenCalledWith({
-      usuarioId: 'user-2',
+      userId: 'user-2',
       skip: undefined,
       take: undefined,
     });

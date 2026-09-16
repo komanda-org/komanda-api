@@ -15,22 +15,22 @@ export class SearchJobsQueryDto {
   @ApiProperty({ required: false })
   @IsOptional()
   @IsString()
-  termo?: string;
+  query?: string;
 
   @ApiProperty({ required: false, enum: ContractType })
   @IsOptional()
   @IsEnum(ContractType)
-  tipoContrato?: ContractType;
+  contractType?: ContractType;
 
   @ApiProperty({ required: false })
   @IsOptional()
   @Type(() => Number)
   @IsNumber(
     { maxDecimalPlaces: 2 },
-    { message: 'salarioMinimo deve ser um número com até duas casas decimais' },
+    { message: 'minSalary deve ser um número com até duas casas decimais' },
   )
-  @Min(0, { message: 'salarioMinimo deve ser maior ou igual a zero' })
-  salarioMinimo?: number;
+  @Min(0, { message: 'minSalary deve ser maior ou igual a zero' })
+  minSalary?: number;
 
   @ApiProperty({ required: false })
   @IsOptional()

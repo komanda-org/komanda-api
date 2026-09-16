@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
 
-export class ListAvaliacoesQueryDto {
+export class ListReviewsQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt({ message: 'skip deve ser um número inteiro' })

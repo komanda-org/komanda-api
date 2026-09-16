@@ -60,7 +60,7 @@ describe('SearchProfessionalsUseCase', () => {
     });
 
     it('aplica o filtro de cargo de forma case insensitive', async () => {
-      const query: SearchProfessionalsQueryDto = { cargo: 'cozinheiro' };
+      const query: SearchProfessionalsQueryDto = { position: 'cozinheiro' };
 
       mockPrisma.professional.findMany.mockResolvedValue([]);
       mockPrisma.professional.count.mockResolvedValue(0);
@@ -131,7 +131,7 @@ describe('SearchProfessionalsUseCase', () => {
     });
 
     it('retorna lista vazia quando nenhum profissional é encontrado', async () => {
-      const query: SearchProfessionalsQueryDto = { cargo: 'Sommelier' };
+      const query: SearchProfessionalsQueryDto = { position: 'Sommelier' };
 
       mockPrisma.professional.findMany.mockResolvedValue([]);
       mockPrisma.professional.count.mockResolvedValue(0);

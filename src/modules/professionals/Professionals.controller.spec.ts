@@ -70,7 +70,7 @@ describe('ProfessionalsController', () => {
   });
 
   it('busca profissionais delegando ao use case', async () => {
-    const query = { cargo: 'Cozinheiro', skip: 0, take: 20 };
+    const query = { position: 'Cozinheiro', skip: 0, take: 20 };
     const result = { data: [], total: 0, skip: 0, take: 20 };
 
     const executeSpy = jest

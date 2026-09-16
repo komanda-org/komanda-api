@@ -88,9 +88,9 @@ describe('JobsController', () => {
 
   it('should call searchJobsUseCase.execute with search query params', async () => {
     const query = {
-      termo: 'chef',
-      tipoContrato: ContractType.CLT,
-      salarioMinimo: 4000,
+      query: 'chef',
+      contractType: ContractType.CLT,
+      minSalary: 4000,
       skip: 0,
       take: 10,
     };

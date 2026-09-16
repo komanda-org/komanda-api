@@ -9,8 +9,8 @@ export class SearchProfessionalsQueryDto {
       'Filtra por cargo principal do profissional (case insensitive)',
   })
   @IsOptional()
-  @IsString({ message: 'cargo deve ser uma string' })
-  cargo?: string;
+  @IsString({ message: 'position deve ser uma string' })
+  position?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

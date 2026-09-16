@@ -12,11 +12,13 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
+import { ApiTags } from '@nestjs/swagger';
 import { ListNotificationsQueryDto } from './dto/list-notifications-query.dto';
 import { ListNotificationsUseCase } from './use-cases/list-notifications.use-case';
 import { MarkAsReadUseCase } from './use-cases/mark-as-read.use-case';
 
-@Controller('notificacoes')
+@ApiTags('Notifications')
+@Controller('users')
 @UseGuards(AuthGuard, RolesGuard)
 export class NotificationsController {
   constructor(
@@ -24,7 +26,7 @@ export class NotificationsController {
     private readonly markAsReadUseCase: MarkAsReadUseCase,
   ) {}
 
-  @Get()
+  @Get('me/notifications')
   @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
   async list(
     @Query() query: ListNotificationsQueryDto,
@@ -37,7 +39,7 @@ export class NotificationsController {
     });
   }
 
-  @Patch(':id/lida')
+  @Patch('me/notifications/:id/read')
   @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
   async markAsRead(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.markAsReadUseCase.execute({

@@ -16,12 +16,12 @@ describe('ListMyApplicationsUseCase', () => {
   let prisma: MockPrisma;
 
   const PROFISSIONAL_ID = 'professional-1';
-  const dataCandidatura = new Date('2026-07-10T12:00:00Z');
+  const applicationDate = new Date('2026-07-10T12:00:00Z');
 
   const candidaturaRow = {
     id: 'candidatura-1',
     status: CandidaturaStatus.PENDENTE,
-    createdAt: dataCandidatura,
+    createdAt: applicationDate,
     job: {
       id: 'job-1',
       title: 'Chef de Cozinha',
@@ -41,21 +41,21 @@ describe('ListMyApplicationsUseCase', () => {
     prisma.candidatura.findMany.mockResolvedValue([candidaturaRow]);
     prisma.candidatura.count.mockResolvedValue(1);
 
-    const result = await useCase.execute({ profissionalId: PROFISSIONAL_ID });
+    const result = await useCase.execute({ professionalId: PROFISSIONAL_ID });
 
     expect(result).toEqual({
       data: [
         {
-          candidaturaId: 'candidatura-1',
+          applicationId: 'candidatura-1',
           status: CandidaturaStatus.PENDENTE,
-          dataCandidatura,
-          vaga: {
+          applicationDate,
+          job: {
             id: 'job-1',
-            titulo: 'Chef de Cozinha',
+            title: 'Chef de Cozinha',
           },
-          restaurante: {
+          restaurant: {
             id: 'restaurant-1',
-            nome: 'Restaurante Sabor & Arte',
+            name: 'Restaurante Sabor & Arte',
           },
         },
       ],
@@ -69,7 +69,7 @@ describe('ListMyApplicationsUseCase', () => {
     prisma.candidatura.findMany.mockResolvedValue([]);
     prisma.candidatura.count.mockResolvedValue(0);
 
-    await useCase.execute({ profissionalId: PROFISSIONAL_ID });
+    await useCase.execute({ professionalId: PROFISSIONAL_ID });
 
     const where = { professionalId: PROFISSIONAL_ID };
     expect(prisma.candidatura.findMany).toHaveBeenCalledWith(
@@ -83,7 +83,7 @@ describe('ListMyApplicationsUseCase', () => {
     prisma.candidatura.count.mockResolvedValue(1);
 
     await useCase.execute({
-      profissionalId: PROFISSIONAL_ID,
+      professionalId: PROFISSIONAL_ID,
       status: CandidaturaStatus.APROVADA,
     });
 
@@ -102,7 +102,7 @@ describe('ListMyApplicationsUseCase', () => {
     prisma.candidatura.count.mockResolvedValue(0);
 
     const result = await useCase.execute({
-      profissionalId: PROFISSIONAL_ID,
+      professionalId: PROFISSIONAL_ID,
       skip: 10,
       take: 5,
     });
@@ -118,7 +118,7 @@ describe('ListMyApplicationsUseCase', () => {
     prisma.candidatura.findMany.mockResolvedValue([]);
     prisma.candidatura.count.mockResolvedValue(0);
 
-    const result = await useCase.execute({ profissionalId: PROFISSIONAL_ID });
+    const result = await useCase.execute({ professionalId: PROFISSIONAL_ID });
 
     expect(prisma.candidatura.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ skip: 0, take: 20 }),
@@ -131,7 +131,7 @@ describe('ListMyApplicationsUseCase', () => {
     prisma.candidatura.findMany.mockResolvedValue([]);
     prisma.candidatura.count.mockResolvedValue(0);
 
-    const result = await useCase.execute({ profissionalId: PROFISSIONAL_ID });
+    const result = await useCase.execute({ professionalId: PROFISSIONAL_ID });
 
     expect(result.data).toEqual([]);
     expect(result.total).toBe(0);

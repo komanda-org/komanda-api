@@ -17,8 +17,8 @@ import {
 import { DeleteAccountUseCase } from './use-cases/DeleteAccountUseCase';
 import type { UpdateProfileDto } from './update-user.dto';
 
-@Controller('usuarios')
-export class UsuariosController {
+@Controller('users')
+export class UsersController {
   constructor(
     private readonly updateMyProfile: UpdateMyProfileUseCase,
     private readonly deleteAccountUseCase: DeleteAccountUseCase,
