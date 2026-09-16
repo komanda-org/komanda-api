@@ -5,9 +5,9 @@ import { INotificacaoService } from '../interfaces/notification-service.interfac
 export class ConsoleNotificationProvider implements INotificacaoService {
   private readonly logger = new Logger(ConsoleNotificationProvider.name);
 
-  create(params: { userId: string; titulo: string; mensagem: string }): void {
+  create(params: { userId: string; title: string; message: string }): void {
     this.logger.log(
-      `Notificação para ${params.userId}: [${params.titulo}] ${params.mensagem}`,
+      `Notificação para ${params.userId}: [${params.title}] ${params.message}`,
     );
   }
 }
