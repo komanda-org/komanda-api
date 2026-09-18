@@ -103,6 +103,7 @@ model Restaurant {
   updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
   active         Boolean   @default(true)
+  plan           PlanType  @default(FREE)
   user           User      @relation(fields: [userId], references: [id])
   jobs           Job[]
   avaliacoes Avaliacao[]
