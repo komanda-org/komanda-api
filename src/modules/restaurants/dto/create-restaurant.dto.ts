@@ -32,7 +32,7 @@ export class CnpjValidator implements ValidatorConstraintInterface {
 
     const calcDigit = (digitString: string, length: number): number => {
       let sum = 0;
-      let weight = length - 7;
+      let weight = length - 8;
 
       for (let i = 0; i < length - 1; i += 1) {
         sum += Number(digitString[i]) * weight;
