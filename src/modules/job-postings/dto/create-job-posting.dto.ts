@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -50,4 +51,12 @@ export class CreateJobPostingDto {
   @ApiProperty({ enum: ContractType })
   @IsEnum(ContractType)
   contractType!: ContractType;
+
+  // Opcional no body: se ausente, o banco aplica o @default(false) do schema.
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  @IsBoolean({
+    message: 'O campo urgente deve ser verdadeiro ou falso',
+  })
+  urgent?: boolean;
 }

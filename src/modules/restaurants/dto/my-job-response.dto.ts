@@ -8,6 +8,7 @@ export interface MyJobDto {
   salary: number | null;
   contractType: ContractType;
   status: JobStatus;
+  urgent: boolean;
   createdAt: Date;
 }
 

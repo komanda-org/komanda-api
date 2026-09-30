@@ -94,6 +94,7 @@ describe('JobPostingsController', () => {
       salary: dto.salary,
       contractType: dto.contractType,
       status: JobStatus.ABERTA,
+      urgent: false,
       restaurantId: req.user.id,
       createdAt: new Date(),
     };
