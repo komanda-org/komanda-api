@@ -18,5 +18,7 @@ export class DeleteAccountUseCase {
     });
   }
 }
+// ponytail: soft-delete preserva dados (LGPD RNF11 + auditoria RNF12).
+// Follow-up condicional: anonimizar dados pessoais aqui SE a banca exigir exclusão/anonimização estrita.
 // ponytail: JWT blocklist omitida — tokens de curta duração cobrem o caso.
 // Upgrade: blocklist em cache quando tokens de longa duração existirem.
