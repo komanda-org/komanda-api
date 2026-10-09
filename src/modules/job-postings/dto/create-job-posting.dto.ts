@@ -7,8 +7,10 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ContractType } from '@prisma/client';
+import { normalizeShift } from 'src/modules/jobs/dto/normalize-shift';
 
 export class CreateJobPostingDto {
   @ApiProperty()
@@ -50,4 +52,13 @@ export class CreateJobPostingDto {
   @ApiProperty({ enum: ContractType })
   @IsEnum(ContractType)
   contractType!: ContractType;
+
+  @ApiProperty({ required: false, example: 'NOITE' })
+  @IsOptional()
+  @Transform(normalizeShift)
+  @IsString()
+  @MaxLength(30, {
+    message: 'O turno não pode passar de 30 caracteres',
+  })
+  shift?: string;
 }

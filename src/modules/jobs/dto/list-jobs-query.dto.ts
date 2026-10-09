@@ -1,8 +1,23 @@
-import { IsInt, IsOptional, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  Max,
+  MaxLength,
+} from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { normalizeShift } from './normalize-shift';
 
 export class ListJobsQueryDto {
+  @ApiProperty({ required: false, example: 'NOITE' })
+  @IsOptional()
+  @Transform(normalizeShift)
+  @IsString()
+  @MaxLength(30, { message: 'shift não pode passar de 30 caracteres' })
+  shift?: string;
+
   @ApiProperty({ required: false })
   @IsOptional()
   @Type(() => Number)

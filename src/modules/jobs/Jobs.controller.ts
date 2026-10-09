@@ -34,6 +34,7 @@ export class JobsController {
   @ApiResponse({ status: 200, description: 'Lista de vagas' })
   async listJobs(@Query() query: ListJobsQueryDto) {
     return await this.searchJobsUseCase.execute({
+      shift: query.shift,
       skip: query.skip,
       take: query.take,
     });
@@ -43,7 +44,8 @@ export class JobsController {
   @Roles(Role.PROFISSIONAL)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Pesquisar vagas por termo, tipo de contrato e salário mínimo',
+    summary:
+      'Pesquisar vagas por termo, tipo de contrato, turno e salário mínimo',
   })
   @ApiResponse({ status: 200, description: 'Lista filtrada de vagas' })
   async searchJobs(@Query() query: SearchJobsQueryDto) {

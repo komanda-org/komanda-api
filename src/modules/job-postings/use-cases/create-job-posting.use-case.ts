@@ -9,6 +9,7 @@ interface CreateJobPostingInput {
   requirements?: string;
   salary?: number;
   contractType: ContractType;
+  shift?: string;
   restaurantId: string;
 }
 
@@ -39,6 +40,7 @@ export class CreateJobPostingUseCase {
           requirements: input.requirements,
           salary: input.salary,
           contractType: input.contractType,
+          shift: input.shift,
           restaurantId: input.restaurantId,
         },
       });
@@ -52,6 +54,7 @@ export class CreateJobPostingUseCase {
         requirements: vaga.requirements ?? undefined,
         salary: vaga.salary?.toNumber(),
         contractType: vaga.contractType,
+        shift: vaga.shift ?? undefined,
         status: vaga.status,
         restaurantId: vaga.restaurantId,
         createdAt: vaga.createdAt,

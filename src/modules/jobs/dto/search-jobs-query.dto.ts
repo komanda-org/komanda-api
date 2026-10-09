@@ -1,4 +1,4 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsEnum,
   IsInt,
@@ -6,10 +6,12 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ContractType } from '@prisma/client';
+import { normalizeShift } from './normalize-shift';
 
 export class SearchJobsQueryDto {
   @ApiProperty({ required: false })
@@ -21,6 +23,13 @@ export class SearchJobsQueryDto {
   @IsOptional()
   @IsEnum(ContractType)
   contractType?: ContractType;
+
+  @ApiProperty({ required: false, example: 'NOITE' })
+  @IsOptional()
+  @Transform(normalizeShift)
+  @IsString()
+  @MaxLength(30, { message: 'shift não pode passar de 30 caracteres' })
+  shift?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

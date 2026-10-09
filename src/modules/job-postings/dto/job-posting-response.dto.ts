@@ -7,6 +7,7 @@ export interface JobPostingResponseDto {
   requirements?: string;
   salary?: number;
   contractType: ContractType;
+  shift?: string;
   status: JobStatus;
   restaurantId: string;
   createdAt: Date;

@@ -18,6 +18,7 @@ describe('JobsController', () => {
         requirements: 'Experiência mínima de 2 anos',
         salary: '3000.00',
         contractType: ContractType.CLT,
+        shift: 'NOITE',
         status: JobStatus.ABERTA,
         restaurantId: 'restaurant-1',
         restaurant: {
@@ -69,6 +70,20 @@ describe('JobsController', () => {
 
     expect(result).toBe(mockListJobsResponse);
     expect(searchJobsUseCase.execute).toHaveBeenCalledWith(query);
+  });
+
+  it('should forward the shift filter from GET /jobs to the use case', async () => {
+    const executeSpy = jest
+      .spyOn(searchJobsUseCase, 'execute')
+      .mockResolvedValue(mockListJobsResponse);
+
+    await controller.listJobs({ shift: 'NOITE', skip: 0, take: 20 });
+
+    expect(executeSpy).toHaveBeenCalledWith({
+      shift: 'NOITE',
+      skip: 0,
+      take: 20,
+    });
   });
 
   it('should return paginated job feed', async () => {

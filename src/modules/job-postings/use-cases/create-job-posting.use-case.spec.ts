@@ -22,6 +22,7 @@ describe('CreateJobPostingUseCase', () => {
     requirements: 'Experiência prévia e liderança.',
     salary: 4500,
     contractType: ContractType.CLT,
+    shift: 'NOITE',
     restaurantId,
   };
 
@@ -52,6 +53,7 @@ describe('CreateJobPostingUseCase', () => {
       // O Prisma devolve Decimal, não number — é isso que o `.toNumber()` trata.
       salary: new Prisma.Decimal('4500.00'),
       contractType: ContractType.CLT,
+      shift: 'NOITE',
       status: JobStatus.ABERTA,
       restaurantId,
       createdAt,
@@ -69,6 +71,7 @@ describe('CreateJobPostingUseCase', () => {
       requirements: input.requirements,
       salary: 4500,
       contractType: ContractType.CLT,
+      shift: 'NOITE',
       status: JobStatus.ABERTA,
       restaurantId,
       createdAt,
@@ -105,12 +108,13 @@ describe('CreateJobPostingUseCase', () => {
         requirements: input.requirements,
         salary: input.salary,
         contractType: ContractType.CLT,
+        shift: 'NOITE',
         restaurantId,
       },
     });
   });
 
-  it('devolve requisitos e salario como undefined quando vierem nulos', async () => {
+  it('devolve requisitos, salario e turno como undefined quando vierem nulos', async () => {
     prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
     prisma.job.create.mockResolvedValue({
       id: 'job-2',
@@ -119,6 +123,7 @@ describe('CreateJobPostingUseCase', () => {
       requirements: null,
       salary: null,
       contractType: ContractType.FREELANCER,
+      shift: null,
       status: JobStatus.ABERTA,
       restaurantId,
       createdAt: new Date(),
@@ -129,10 +134,12 @@ describe('CreateJobPostingUseCase', () => {
       requirements: undefined,
       salary: undefined,
       contractType: ContractType.FREELANCER,
+      shift: undefined,
     });
 
     expect(result.requirements).toBeUndefined();
     expect(result.salary).toBeUndefined();
+    expect(result.shift).toBeUndefined();
   });
 
   it('lança NotFoundException quando o restaurante não existe', async () => {

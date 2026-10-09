@@ -40,6 +40,14 @@ export class SearchJobsUseCase {
       where.contractType = query.contractType;
     }
 
+    // Turno já chega normalizado (trim + maiúsculas) pelo DTO.
+    // Filtro por distância fica fora do MVP: exigiria geolocalização
+    // (coordenadas + cálculo espacial); o bairro textual (RF02) é a
+    // localização aceita por ora.
+    if (query.shift) {
+      where.shift = query.shift;
+    }
+
     if (query.minSalary !== undefined && query.minSalary !== null) {
       where.salary = { gte: new Prisma.Decimal(query.minSalary) };
     }
@@ -70,6 +78,7 @@ export class SearchJobsUseCase {
         requirements: job.requirements,
         salary: job.salary ? job.salary.toString() : null,
         contractType: job.contractType,
+        shift: job.shift,
         status: job.status,
         restaurantId: job.restaurantId,
         restaurant: {

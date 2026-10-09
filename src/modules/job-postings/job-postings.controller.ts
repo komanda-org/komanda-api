@@ -58,6 +58,7 @@ export class JobPostingsController {
       requirements: dto.requirements,
       salary: dto.salary,
       contractType: dto.contractType,
+      shift: dto.shift,
       restaurantId: req.user.id,
     });
   }
