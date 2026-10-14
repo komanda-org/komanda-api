@@ -38,6 +38,21 @@ enum CandidaturaStatus {
   REJEITADA
 }
 
+enum DenunciaStatus {
+  PENDENTE
+  EM_ANALISE
+  RESOLVIDA
+}
+
+// Um targetType único cobre perfil/vaga/mensagem sem 3 tabelas (simplificação
+// MVP declarada na banca); upgrade pós-MVP: tabela/galeria por alvo se a
+// denúncia de mensagem exigir histórico estruturado.
+enum DenunciaTargetType {
+  PERFIL
+  VAGA
+  MENSAGEM
+}
+
 model User {
   id                  String               @id @default(uuid()) @db.VarChar(36)
   email               String               @unique
@@ -51,6 +66,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   restaurant          Restaurant?
   notificacoes        Notificacao[]
+  denuncias           Denuncia[]
 
   @@map("users")
 }
@@ -189,4 +205,23 @@ model Avaliacao {
   @@index([restaurantId])
   @@index([jobId])
   @@map("avaliacoes")
+}
+
+model Denuncia {
+  id         String             @id @default(uuid()) @db.VarChar(36)
+  authorId   String             @map("author_id") @db.VarChar(36)
+  targetType DenunciaTargetType @map("target_type")
+  // Alvo polimórfico (perfil/vaga/mensagem) sem FK por ser de 3 tabelas
+  // diferentes. PERFIL e VAGA são validados no use-case (existência +
+  // ativo); MENSAGEM não valida porque o schema ainda não tem tabela de
+  // chat. Ceiling: denúncia de mensagem aceita alvo inexistente.
+  // Upgrade: validar MENSAGEM quando existir o módulo de mensagens.
+  targetId   String             @map("target_id") @db.VarChar(36)
+  reason     String             @db.Text
+  status     DenunciaStatus     @default(PENDENTE)
+  createdAt  DateTime           @default(now()) @map("created_at")
+  author     User               @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
+  @@map("denuncias")
 }
