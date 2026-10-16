@@ -60,9 +60,8 @@ describe('Auth E2E', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-    throttlerStorage = moduleFixture.get<ThrottlerStorageService>(
-      ThrottlerStorage,
-    );
+    throttlerStorage =
+      moduleFixture.get<ThrottlerStorageService>(ThrottlerStorage);
     app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
