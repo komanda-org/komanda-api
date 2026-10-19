@@ -1,10 +1,11 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { ContractType, JobStatus } from '@prisma/client';
+import { ContractType, JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   JobPostingResponseDto,
@@ -16,8 +17,9 @@ import {
 interface JobPostingChanges {
   title: string;
   description: string;
-  requirements: string;
-  salary: number;
+  // Anuláveis no schema: null é um valor válido aqui (remove o dado).
+  requirements: string | null;
+  salary: number | null;
   contractType: ContractType;
   urgent: boolean;
 }
@@ -66,22 +68,37 @@ export class UpdateJobPostingUseCase {
 
     const { changes } = input;
 
-    const vagaAtualizada = await this.prisma.job.update({
-      where: { id: input.jobId },
-      // O @IsOptional que o PartialType aplica deixa passar null, não só
-      // undefined. Sem o `?? undefined`, um { "title": null } chegaria ao
-      // Prisma numa coluna NOT NULL e viraria erro 500. Aqui null vale como
-      // "campo não enviado" — e undefined o Prisma simplesmente ignora.
-      data: {
-        title: changes.title ?? undefined,
-        description: changes.description ?? undefined,
-        requirements: changes.requirements ?? undefined,
-        salary: changes.salary ?? undefined,
-        contractType: changes.contractType ?? undefined,
-        urgent: changes.urgent ?? undefined,
-      },
-    });
+    try {
+      const vagaAtualizada = await this.prisma.job.update({
+        // Mesma rede de segurança do UpdateJobStatusUseCase: se outra
+        // requisição encerrou a vaga entre o findUnique e aqui, nenhuma linha
+        // casa e o Prisma lança P2025 — em vez de editar uma vaga encerrada.
+        where: { id: input.jobId, status: { not: JobStatus.ENCERRADA } },
+        // O @IsOptional que o PartialType aplica deixa passar null, não só
+        // undefined. Nas colunas NOT NULL, null vale como "campo não enviado"
+        // (`?? undefined`, que o Prisma ignora). Nas anuláveis (requirements e
+        // salary) o null passa direto: undefined = não muda, null = limpa.
+        data: {
+          title: changes.title ?? undefined,
+          description: changes.description ?? undefined,
+          requirements: changes.requirements,
+          salary: changes.salary,
+          contractType: changes.contractType ?? undefined,
+          urgent: changes.urgent ?? undefined,
+        },
+      });
 
-    return toJobPostingResponse(vagaAtualizada);
+      return toJobPostingResponse(vagaAtualizada);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new ConflictException(
+          'A vaga foi alterada por outra requisição. Tente novamente.',
+        );
+      }
+      throw error;
+    }
   }
 }

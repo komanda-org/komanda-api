@@ -79,6 +79,15 @@ export class JobPostingsController {
     status: 403,
     description: 'A vaga pertence a outro restaurante',
   })
+  @ApiResponse({ status: 404, description: 'Vaga não encontrada' })
+  @ApiResponse({
+    status: 409,
+    description: 'A vaga foi alterada por outra requisição',
+  })
+  @ApiResponse({
+    status: 422,
+    description: 'Não é possível editar uma vaga encerrada',
+  })
   async update(
     @Param('id') jobId: string,
     @Body() dto: UpdateJobPostingDto,
@@ -107,6 +116,11 @@ export class JobPostingsController {
   @ApiResponse({
     status: 403,
     description: 'A vaga pertence a outro restaurante',
+  })
+  @ApiResponse({ status: 404, description: 'Vaga não encontrada' })
+  @ApiResponse({
+    status: 409,
+    description: 'O status da vaga foi alterado por outra requisição',
   })
   @ApiResponse({ status: 422, description: 'Transição de status inválida' })
   async updateStatus(

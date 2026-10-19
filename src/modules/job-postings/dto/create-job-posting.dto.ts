@@ -8,6 +8,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ContractType } from '@prisma/client';
 
@@ -55,6 +56,8 @@ export class CreateJobPostingDto {
   // Opcional no body: se ausente, o banco aplica o @default(false) do schema.
   @ApiProperty({ required: false, default: false })
   @IsOptional()
+  // A coluna é NOT NULL: null vale como "não enviado" para não chegar ao Prisma.
+  @Transform(({ value }: { value: unknown }) => value ?? undefined)
   @IsBoolean({
     message: 'O campo urgente deve ser verdadeiro ou falso',
   })

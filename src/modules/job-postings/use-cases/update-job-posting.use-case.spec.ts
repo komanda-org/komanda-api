@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   NotFoundException,
   UnprocessableEntityException,
@@ -65,7 +66,7 @@ describe('UpdateJobPostingUseCase', () => {
     });
 
     expect(prisma.job.update).toHaveBeenCalledWith({
-      where: { id: VAGA_ID },
+      where: { id: VAGA_ID, status: { not: JobStatus.ENCERRADA } },
       data: expect.objectContaining({
         title: 'Chef de Cozinha Sênior',
         salary: 5000,
@@ -146,6 +147,45 @@ describe('UpdateJobPostingUseCase', () => {
         data: expect.objectContaining({ title: undefined }) as unknown,
       }),
     );
+  });
+
+  it('repassa null em salary e requirements para limpar as colunas anuláveis', async () => {
+    prisma.job.findUnique.mockResolvedValue(vagaDoRestaurante);
+    prisma.job.update.mockResolvedValue({ ...vagaGravada, salary: null });
+
+    const result = await useCase.execute({
+      jobId: VAGA_ID,
+      restaurantId: RESTAURANTE_ID,
+      changes: { salary: null, requirements: null },
+    });
+
+    expect(prisma.job.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          salary: null,
+          requirements: null,
+        }) as unknown,
+      }),
+    );
+    expect(result.salary).toBeUndefined();
+  });
+
+  it('converte P2025 (vaga encerrada no meio do caminho) em 409', async () => {
+    prisma.job.findUnique.mockResolvedValue(vagaDoRestaurante);
+    prisma.job.update.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('P2025', {
+        code: 'P2025',
+        clientVersion: 'test',
+      }),
+    );
+
+    await expect(
+      useCase.execute({
+        jobId: VAGA_ID,
+        restaurantId: RESTAURANTE_ID,
+        changes: { title: 'Edição concorrente' },
+      }),
+    ).rejects.toThrow(ConflictException);
   });
 
   it('lança 404 quando a vaga não existe', async () => {
