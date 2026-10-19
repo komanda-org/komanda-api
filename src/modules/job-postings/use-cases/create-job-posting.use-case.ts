@@ -123,6 +123,11 @@ export class CreateJobPostingUseCase {
           userId: { not: restaurante.userId },
         },
         select: { userId: true },
+        // ponytail: teto de 500 + ordem determinística (mais antigos primeiro).
+        // Profissionais além do teto não recebem notificação nesta versão
+        // mover o fan-out para background (fila) quando isso importar.
+        orderBy: { createdAt: 'asc' },
+        take: 500,
       });
 
       await this.notificacaoService.createMany(
