@@ -5,6 +5,8 @@ import { JobPostingsController } from './job-postings.controller';
 import { ApplyToJobPostingUseCase } from './use-cases/apply-to-job-posting.use-case';
 import { CreateJobPostingUseCase } from './use-cases/create-job-posting.use-case';
 import { ListJobApplicantsUseCase } from './use-cases/list-job-applicants.use-case';
+import { ListMessagesUseCase } from './use-cases/list-messages.use-case';
+import { SendMessageUseCase } from './use-cases/send-message.use-case';
 import { UpdateApplicationStatusUseCase } from './use-cases/update-application-status.use-case';
 
 // PrismaModule é @Global, então não precisa ser importado aqui.
@@ -18,6 +20,8 @@ import { UpdateApplicationStatusUseCase } from './use-cases/update-application-s
     ApplyToJobPostingUseCase,
     ListJobApplicantsUseCase,
     UpdateApplicationStatusUseCase,
+    SendMessageUseCase,
+    ListMessagesUseCase,
   ],
 })
 export class JobPostingsModule {}

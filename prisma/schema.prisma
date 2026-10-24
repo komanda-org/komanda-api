@@ -67,6 +67,7 @@ model User {
   restaurant          Restaurant?
   notificacoes        Notificacao[]
   denuncias           Denuncia[]
+  messages            Message[]
 
   @@map("users")
 }
@@ -145,6 +146,7 @@ model Job {
   active       Boolean       @default(true)
   candidaturas Candidatura[]
   avaliacoes   Avaliacao[]
+  messages     Message[]
 
   @@index([restaurantId])
   @@index([status])
@@ -224,4 +226,18 @@ model Denuncia {
 
   @@index([authorId])
   @@map("denuncias")
+}
+
+model Message {
+  id        String   @id @default(uuid()) @db.VarChar(36)
+  job       Job      @relation(fields: [jobId], references: [id])
+  jobId     String   @db.VarChar(36)
+  sender    User     @relation(fields: [senderId], references: [id])
+  senderId  String   @db.VarChar(36)
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([jobId, createdAt])
+  @@index([senderId])
+  @@map("messages")
 }
