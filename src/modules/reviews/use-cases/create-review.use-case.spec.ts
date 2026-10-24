@@ -19,6 +19,13 @@ const createMockPrisma = () => ({
   },
   avaliacao: {
     create: jest.fn(),
+    aggregate: jest.fn(),
+  },
+  professional: {
+    update: jest.fn(),
+  },
+  restaurant: {
+    update: jest.fn(),
   },
 });
 
@@ -218,6 +225,7 @@ describe('CreateReviewUseCase', () => {
     prisma.job.findUnique.mockResolvedValue(openJob);
     prisma.candidatura.findFirst.mockResolvedValue({ id: 'candidatura-1' });
     prisma.avaliacao.create.mockResolvedValue({ id: 'avaliacao-1' });
+    prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: 4.0 } });
 
     const result = await useCase.execute(baseInput);
 
@@ -242,6 +250,54 @@ describe('CreateReviewUseCase', () => {
     expect(result).toEqual({ id: 'avaliacao-1' });
   });
 
+  it('recalcula e grava averageRating do restaurant quando profissional avalia', async () => {
+    prisma.user.findUnique
+      .mockResolvedValueOnce(activeProfessional)
+      .mockResolvedValueOnce(activeRestaurant);
+    prisma.job.findUnique.mockResolvedValue(openJob);
+    prisma.candidatura.findFirst.mockResolvedValue({ id: 'candidatura-1' });
+    prisma.avaliacao.create.mockResolvedValue({ id: 'avaliacao-1' });
+    prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: 4.5 } });
+
+    await useCase.execute(baseInput);
+
+    expect(prisma.avaliacao.aggregate).toHaveBeenCalledWith({
+      where: { restaurantId: RESTAURANT_ID },
+      _avg: { rating: true },
+    });
+    expect(prisma.restaurant.update).toHaveBeenCalledWith({
+      where: { userId: RESTAURANT_ID },
+      data: { averageRating: 4.5 },
+    });
+    expect(prisma.professional.update).not.toHaveBeenCalled();
+  });
+
+  it('recalcula e grava averageRating do professional quando restaurante avalia', async () => {
+    prisma.user.findUnique
+      .mockResolvedValueOnce(activeRestaurant)
+      .mockResolvedValueOnce(activeProfessional);
+    prisma.job.findUnique.mockResolvedValue(openJob);
+    prisma.candidatura.findFirst.mockResolvedValue({ id: 'candidatura-1' });
+    prisma.avaliacao.create.mockResolvedValue({ id: 'avaliacao-1' });
+    prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: 4.0 } });
+
+    await useCase.execute({
+      ...baseInput,
+      authorId: RESTAURANT_ID,
+      receiverId: PROFESSIONAL_ID,
+    });
+
+    expect(prisma.avaliacao.aggregate).toHaveBeenCalledWith({
+      where: { professionalId: PROFESSIONAL_ID },
+      _avg: { rating: true },
+    });
+    expect(prisma.professional.update).toHaveBeenCalledWith({
+      where: { userId: PROFESSIONAL_ID },
+      data: { averageRating: 4.0 },
+    });
+    expect(prisma.restaurant.update).not.toHaveBeenCalled();
+  });
+
   it('cria a avaliação quando o restaurante avalia o profissional da vaga', async () => {
     prisma.user.findUnique
       .mockResolvedValueOnce(activeRestaurant)
@@ -249,6 +305,7 @@ describe('CreateReviewUseCase', () => {
     prisma.job.findUnique.mockResolvedValue(openJob);
     prisma.candidatura.findFirst.mockResolvedValue({ id: 'candidatura-1' });
     prisma.avaliacao.create.mockResolvedValue({ id: 'avaliacao-2' });
+    prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: 4.0 } });
 
     const input = {
       ...baseInput,
@@ -285,6 +342,7 @@ describe('CreateReviewUseCase', () => {
     prisma.job.findUnique.mockResolvedValue(openJob);
     prisma.candidatura.findFirst.mockResolvedValue({ id: 'candidatura-1' });
     prisma.avaliacao.create.mockResolvedValue({ id: 'avaliacao-3' });
+    prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: 4.0 } });
 
     const { comment, ...inputSemComment } = baseInput;
 

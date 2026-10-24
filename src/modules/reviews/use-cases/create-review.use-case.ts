@@ -103,7 +103,30 @@ export class CreateReviewUseCase {
     };
 
     try {
-      return await this.prisma.avaliacao.create({ data });
+      const avaliacao = await this.prisma.avaliacao.create({ data });
+
+      const receiverIsRestaurant = isProfessionalAuthor;
+
+      const aggregate = await this.prisma.avaliacao.aggregate({
+        where: receiverIsRestaurant
+          ? { restaurantId: data.restaurantId }
+          : { professionalId: data.professionalId },
+        _avg: { rating: true },
+      });
+
+      if (receiverIsRestaurant) {
+        await this.prisma.restaurant.update({
+          where: { userId: data.restaurantId },
+          data: { averageRating: aggregate._avg.rating },
+        });
+      } else {
+        await this.prisma.professional.update({
+          where: { userId: data.professionalId },
+          data: { averageRating: aggregate._avg.rating },
+        });
+      }
+
+      return avaliacao;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
