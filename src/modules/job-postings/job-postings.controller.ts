@@ -24,12 +24,16 @@ import { RolesGuard } from 'src/auth/roles.guard';
 import { ApplicationResponseDto } from './dto/application-response.dto';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import { CreateJobPostingDto } from './dto/create-job-posting.dto';
-import { ListJobApplicantsResponseDto } from './dto/job-applicant-response.dto';
 import { JobPostingResponseDto } from './dto/job-posting-response.dto';
+import { ListJobApplicantsResponseDto } from './dto/job-applicant-response.dto';
 import { ListJobApplicantsQueryDto } from './dto/list-job-applicants-query.dto';
+import { MessageResponseDto } from './dto/message-response.dto';
+import { SendMessageDto } from './dto/send-message.dto';
 import { ApplyToJobPostingUseCase } from './use-cases/apply-to-job-posting.use-case';
 import { CreateJobPostingUseCase } from './use-cases/create-job-posting.use-case';
 import { ListJobApplicantsUseCase } from './use-cases/list-job-applicants.use-case';
+import { ListMessagesUseCase } from './use-cases/list-messages.use-case';
+import { SendMessageUseCase } from './use-cases/send-message.use-case';
 
 @ApiTags('Job Postings')
 @ApiBearerAuth()
@@ -40,6 +44,8 @@ export class JobPostingsController {
     private readonly createJobPosting: CreateJobPostingUseCase,
     private readonly applyToJobPosting: ApplyToJobPostingUseCase,
     private readonly listJobApplicants: ListJobApplicantsUseCase,
+    private readonly sendMessage: SendMessageUseCase,
+    private readonly listMessages: ListMessagesUseCase,
   ) {}
 
   @Post()
@@ -104,6 +110,44 @@ export class JobPostingsController {
       status: query.status,
       skip: query.skip,
       take: query.take,
+    });
+  }
+
+  @Post(':id/messages')
+  @HttpCode(HttpStatus.CREATED)
+  @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
+  @ApiOperation({ summary: 'Enviar mensagem na vaga' })
+  @ApiResponse({ status: 201, description: 'Mensagem enviada com sucesso' })
+  async send(
+    @Param('id') jobId: string,
+    @Body() dto: SendMessageDto,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<MessageResponseDto> {
+    // O remetente vem do token, nunca do body (regra de segurança).
+    return this.sendMessage.execute({
+      jobId,
+      senderId: req.user.id,
+      senderRole: req.user.role,
+      content: dto.content,
+    });
+  }
+
+  @Get(':id/messages')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
+  @ApiOperation({ summary: 'Listar mensagens da vaga' })
+  @ApiResponse({
+    status: 200,
+    description: 'Mensagens da vaga em ordem cronológica',
+  })
+  async list(
+    @Param('id') jobId: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<MessageResponseDto[]> {
+    return this.listMessages.execute({
+      jobId,
+      userId: req.user.id,
+      userRole: req.user.role,
     });
   }
 }

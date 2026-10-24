@@ -11,6 +11,8 @@ import { JobPostingsController } from './job-postings.controller';
 import { ApplyToJobPostingUseCase } from './use-cases/apply-to-job-posting.use-case';
 import { CreateJobPostingUseCase } from './use-cases/create-job-posting.use-case';
 import { ListJobApplicantsUseCase } from './use-cases/list-job-applicants.use-case';
+import { ListMessagesUseCase } from './use-cases/list-messages.use-case';
+import { SendMessageUseCase } from './use-cases/send-message.use-case';
 
 describe('JobPostingsController', () => {
   let controller: JobPostingsController;
@@ -36,6 +38,18 @@ describe('JobPostingsController', () => {
         },
         {
           provide: ListJobApplicantsUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: SendMessageUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: ListMessagesUseCase,
           useValue: {
             execute: jest.fn(),
           },
