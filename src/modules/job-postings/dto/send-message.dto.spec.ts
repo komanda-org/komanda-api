@@ -41,10 +41,8 @@ describe('SendMessageDto — contrato de body', () => {
   });
 
   it('aceita um content válido', async () => {
-    const result = await pipe.transform(
-      { content: 'Oi, tudo bem?' },
-      metadata,
-    );
-    expect(result).toEqual({ content: 'Oi, tudo bem?' });
+    await expect(
+      pipe.transform({ content: 'Oi, tudo bem?' }, metadata),
+    ).resolves.toEqual({ content: 'Oi, tudo bem?' });
   });
 });
