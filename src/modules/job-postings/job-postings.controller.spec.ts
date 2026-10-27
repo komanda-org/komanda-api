@@ -1,3 +1,4 @@
+import { ForbiddenException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   CandidaturaStatus,
@@ -19,6 +20,8 @@ describe('JobPostingsController', () => {
   let createJobPostingUseCase: CreateJobPostingUseCase;
   let applyToJobPostingUseCase: ApplyToJobPostingUseCase;
   let listJobApplicantsUseCase: ListJobApplicantsUseCase;
+  let sendMessageUseCase: SendMessageUseCase;
+  let listMessagesUseCase: ListMessagesUseCase;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -76,6 +79,8 @@ describe('JobPostingsController', () => {
     listJobApplicantsUseCase = module.get<ListJobApplicantsUseCase>(
       ListJobApplicantsUseCase,
     );
+    sendMessageUseCase = module.get<SendMessageUseCase>(SendMessageUseCase);
+    listMessagesUseCase = module.get<ListMessagesUseCase>(ListMessagesUseCase);
   });
 
   it('should be defined', () => {
@@ -189,5 +194,89 @@ describe('JobPostingsController', () => {
       take: 5,
     });
     expect(result).toBe(response);
+  });
+
+  it('envia mensagem usando o remetente do token e repassa o payload ao use case', async () => {
+    const req = {
+      user: { id: 'professional-1', role: Role.PROFISSIONAL },
+    };
+    const result = {
+      id: 'message-1',
+      jobId: 'job-1',
+      senderId: 'professional-1',
+      content: 'Oi, tudo bem?',
+      createdAt: new Date('2026-01-01T10:00:00Z'),
+    };
+    const executeSpy = jest
+      .spyOn(sendMessageUseCase, 'execute')
+      .mockResolvedValue(result);
+
+    const output = await controller.send(
+      'job-1',
+      { content: 'Oi, tudo bem?' },
+      req,
+    );
+
+    expect(output).toBe(result);
+    expect(executeSpy).toHaveBeenCalledWith({
+      jobId: 'job-1',
+      senderId: 'professional-1',
+      senderRole: Role.PROFISSIONAL,
+      content: 'Oi, tudo bem?',
+    });
+  });
+
+  it('propaga ForbiddenException (403) ao enviar sem candidatura aprovada na vaga', async () => {
+    const req = { user: { id: 'professional-1', role: Role.PROFISSIONAL } };
+    jest
+      .spyOn(sendMessageUseCase, 'execute')
+      .mockRejectedValue(new ForbiddenException('sem candidatura aprovada'));
+
+    await expect(
+      controller.send('job-1', { content: 'Oi' }, req),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('propaga ForbiddenException (403) ao listar sem candidatura aprovada na vaga', async () => {
+    const req = { user: { id: 'restaurant-1', role: Role.RESTAURANTE } };
+    jest
+      .spyOn(listMessagesUseCase, 'execute')
+      .mockRejectedValue(new ForbiddenException('sem candidatura aprovada'));
+
+    await expect(controller.list('job-1', req)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it('lista mensagens de um jobId passando o usuário do token', async () => {
+    const req = { user: { id: 'restaurant-1', role: Role.RESTAURANTE } };
+    const mensagens = [
+      {
+        id: 'message-1',
+        jobId: 'job-1',
+        senderId: 'professional-1',
+        content: 'Oi',
+        createdAt: new Date('2026-01-01T10:00:00Z'),
+      },
+      {
+        id: 'message-2',
+        jobId: 'job-1',
+        senderId: 'restaurant-1',
+        content: 'Olá',
+        createdAt: new Date('2026-01-01T10:05:00Z'),
+      },
+    ];
+    const executeSpy = jest
+      .spyOn(listMessagesUseCase, 'execute')
+      .mockResolvedValue(mensagens);
+
+    const result = await controller.list('job-1', req);
+
+    expect(result).toBe(mensagens);
+    expect(executeSpy).toHaveBeenCalledWith({
+      jobId: 'job-1',
+      userId: 'restaurant-1',
+      userRole: Role.RESTAURANTE,
+    });
   });
 });
