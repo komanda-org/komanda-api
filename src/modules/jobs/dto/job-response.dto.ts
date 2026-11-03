@@ -13,6 +13,7 @@ export interface JobResponseDto {
   salary: string | null;
   contractType: ContractType;
   status: JobStatus;
+  urgent: boolean;
   restaurantId: string;
   restaurant: JobRestaurantDto;
   createdAt: Date;

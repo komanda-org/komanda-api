@@ -71,6 +71,7 @@ export class SearchJobsUseCase {
         salary: job.salary ? job.salary.toString() : null,
         contractType: job.contractType,
         status: job.status,
+        urgent: job.urgent,
         restaurantId: job.restaurantId,
         restaurant: {
           restaurantName: job.restaurant.restaurantName,

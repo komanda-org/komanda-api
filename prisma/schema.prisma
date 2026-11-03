@@ -135,6 +135,8 @@ model Job {
   salary       Decimal?     @db.Decimal(10, 2)
   contractType ContractType @map("contract_type")
   status       JobStatus    @default(ABERTA)
+  urgent       Boolean      @default(false)
+  closedAt     DateTime?    @map("closed_at")
 
   restaurantId String     @map("restaurant_id") @db.VarChar(36)
   restaurant   Restaurant @relation(fields: [restaurantId], references: [userId], onDelete: Cascade)

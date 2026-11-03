@@ -44,6 +44,7 @@ export class ListMyJobsUseCase {
         salary: job.salary?.toNumber() ?? null,
         contractType: job.contractType,
         status: job.status,
+        urgent: job.urgent,
         createdAt: job.createdAt,
       })),
       total,

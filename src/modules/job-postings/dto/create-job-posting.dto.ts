@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -7,6 +8,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ContractType } from '@prisma/client';
 
@@ -50,4 +52,13 @@ export class CreateJobPostingDto {
   @ApiProperty({ enum: ContractType })
   @IsEnum(ContractType)
   contractType!: ContractType;
+
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  // null = "não enviado": a coluna é NOT NULL, então null não pode chegar ao Prisma.
+  @Transform(({ value }: { value: unknown }) => value ?? undefined)
+  @IsBoolean({
+    message: 'O campo urgente deve ser verdadeiro ou falso',
+  })
+  urgent?: boolean;
 }
