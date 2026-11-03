@@ -9,9 +9,7 @@ import { UpdateJobPostingDto } from './update-job-posting.dto';
 
 const MENSAGEM_URGENT = 'O campo urgente deve ser verdadeiro ou falso';
 
-// Recriamos aqui o MESMO pipe configurado globalmente em src/main.ts.
-// Assim testamos o contrato de validação de forma isolada, sem precisar
-// subir o app inteiro (nem banco, nem auth): validamos só a regra do body.
+// Mesma configuração do ValidationPipe global (src/main.ts), testando só o body.
 const pipe = new ValidationPipe({
   whitelist: true,
   forbidNonWhitelisted: true,
@@ -32,8 +30,6 @@ describe('CreateJobPostingDto — contrato do campo urgent', () => {
   };
 
   it('rejeita urgent não booleano com a mensagem PT', async () => {
-    // O ValidationPipe põe as mensagens no corpo da resposta
-    // (getResponse().message); o error.message é só "Bad Request Exception".
     const erro: unknown = await pipe
       .transform({ ...base, urgent: 'sim' }, metadata)
       .catch((e: BadRequestException) => e.getResponse());
@@ -47,8 +43,7 @@ describe('CreateJobPostingDto — contrato do campo urgent', () => {
   });
 
   it('trata urgent: null como não enviado (default do banco)', async () => {
-    // Regressão do achado Alto: null passava pelo @IsOptional e chegava ao
-    // Prisma numa coluna NOT NULL (500). Agora vira undefined no DTO.
+    // Regressão: null chegava ao Prisma numa coluna NOT NULL (500).
     const out = (await pipe.transform(
       { ...base, urgent: null },
       metadata,

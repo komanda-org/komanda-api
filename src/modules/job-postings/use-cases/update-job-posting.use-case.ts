@@ -1,23 +1,17 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
-import { ContractType, JobStatus, Prisma } from '@prisma/client';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { ContractType, JobStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   JobPostingResponseDto,
   toJobPostingResponse,
 } from '../dto/job-posting-response.dto';
+import { findOwnedJob, rethrowJobConflict } from './find-owned-job';
 
-// Campos que o dono pode editar. `status` fica de fora: pausar/encerrar tem
-// regras de transição próprias e vive em um use case separado.
+// `status` fica de fora: pausar/encerrar tem transições próprias (update-job-status).
 interface JobPostingChanges {
   title: string;
   description: string;
-  // Anuláveis no schema: null é um valor válido aqui (remove o dado).
+  // Anuláveis no schema: null remove o dado.
   requirements: string | null;
   salary: number | null;
   contractType: ContractType;
@@ -27,7 +21,6 @@ interface JobPostingChanges {
 interface UpdateJobPostingInput {
   jobId: string;
   restaurantId: string;
-  // Partial: no PATCH o dono manda só o que quer mudar.
   changes: Partial<JobPostingChanges>;
 }
 
@@ -36,30 +29,13 @@ export class UpdateJobPostingUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
   async execute(input: UpdateJobPostingInput): Promise<JobPostingResponseDto> {
-    const vaga = await this.prisma.job.findUnique({
-      where: { id: input.jobId },
-      select: {
-        restaurantId: true,
-        status: true,
-        active: true,
-        deletedAt: true,
-      },
-    });
+    const vaga = await findOwnedJob(
+      this.prisma,
+      input.jobId,
+      input.restaurantId,
+    );
 
-    // Mesmo critério do ListJobApplicantsUseCase: excluída logicamente = inexistente.
-    if (!vaga || !vaga.active || vaga.deletedAt) {
-      throw new NotFoundException('Vaga não encontrada');
-    }
-
-    // O restaurantId vem do token: um restaurante não edita vaga alheia.
-    if (vaga.restaurantId !== input.restaurantId) {
-      throw new ForbiddenException(
-        'Você não tem permissão para editar esta vaga',
-      );
-    }
-
-    // Vaga encerrada é registro histórico (RNF12): editar depois do
-    // encerramento apagaria o que de fato foi anunciado.
+    // Vaga encerrada é registro histórico (RNF12).
     if (vaga.status === JobStatus.ENCERRADA) {
       throw new UnprocessableEntityException(
         'Não é possível editar uma vaga encerrada',
@@ -70,14 +46,9 @@ export class UpdateJobPostingUseCase {
 
     try {
       const vagaAtualizada = await this.prisma.job.update({
-        // Mesma rede de segurança do UpdateJobStatusUseCase: se outra
-        // requisição encerrou a vaga entre o findUnique e aqui, nenhuma linha
-        // casa e o Prisma lança P2025 — em vez de editar uma vaga encerrada.
+        // Fecha a corrida com o PATCH /:id/status.
         where: { id: input.jobId, status: { not: JobStatus.ENCERRADA } },
-        // O @IsOptional que o PartialType aplica deixa passar null, não só
-        // undefined. Nas colunas NOT NULL, null vale como "campo não enviado"
-        // (`?? undefined`, que o Prisma ignora). Nas anuláveis (requirements e
-        // salary) o null passa direto: undefined = não muda, null = limpa.
+        // `undefined` = não muda; `null` só passa nas colunas anuláveis (limpa).
         data: {
           title: changes.title ?? undefined,
           description: changes.description ?? undefined,
@@ -90,15 +61,10 @@ export class UpdateJobPostingUseCase {
 
       return toJobPostingResponse(vagaAtualizada);
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        throw new ConflictException(
-          'A vaga foi alterada por outra requisição. Tente novamente.',
-        );
-      }
-      throw error;
+      rethrowJobConflict(
+        error,
+        'A vaga foi alterada por outra requisição. Tente novamente.',
+      );
     }
   }
 }

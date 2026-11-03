@@ -53,10 +53,9 @@ export class CreateJobPostingDto {
   @IsEnum(ContractType)
   contractType!: ContractType;
 
-  // Opcional no body: se ausente, o banco aplica o @default(false) do schema.
   @ApiProperty({ required: false, default: false })
   @IsOptional()
-  // A coluna é NOT NULL: null vale como "não enviado" para não chegar ao Prisma.
+  // null = "não enviado": a coluna é NOT NULL, então null não pode chegar ao Prisma.
   @Transform(({ value }: { value: unknown }) => value ?? undefined)
   @IsBoolean({
     message: 'O campo urgente deve ser verdadeiro ou falso',

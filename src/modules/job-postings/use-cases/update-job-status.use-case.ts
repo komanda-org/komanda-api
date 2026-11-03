@@ -1,16 +1,11 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common';
-import { JobStatus, Prisma } from '@prisma/client';
+import { Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { JobStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   JobPostingResponseDto,
   toJobPostingResponse,
 } from '../dto/job-posting-response.dto';
+import { findOwnedJob, rethrowJobConflict } from './find-owned-job';
 
 interface UpdateJobStatusInput {
   jobId: string;
@@ -18,10 +13,8 @@ interface UpdateJobStatusInput {
   status: JobStatus;
 }
 
-// Tabela de transições: para cada status atual, para onde a vaga pode ir.
-// O Record<JobStatus, ...> obriga a ter uma chave para CADA valor do enum —
-// se um status novo for criado no schema, o TS acusa aqui até alguém decidir
-// as regras dele. ENCERRADA não leva a lugar nenhum: é estado final.
+// Record<JobStatus, ...> obriga uma entrada para cada status do enum:
+// status novo no schema quebra o typecheck até alguém definir as transições.
 const TRANSICOES_PERMITIDAS: Record<JobStatus, JobStatus[]> = {
   [JobStatus.ABERTA]: [JobStatus.PAUSADA, JobStatus.ENCERRADA],
   [JobStatus.PAUSADA]: [JobStatus.ABERTA, JobStatus.ENCERRADA],
@@ -33,27 +26,11 @@ export class UpdateJobStatusUseCase {
   constructor(private readonly prisma: PrismaService) {}
 
   async execute(input: UpdateJobStatusInput): Promise<JobPostingResponseDto> {
-    const vaga = await this.prisma.job.findUnique({
-      where: { id: input.jobId },
-      select: {
-        restaurantId: true,
-        status: true,
-        active: true,
-        deletedAt: true,
-      },
-    });
-
-    // Mesmo critério do UpdateJobPostingUseCase: excluída logicamente = inexistente.
-    if (!vaga || !vaga.active || vaga.deletedAt) {
-      throw new NotFoundException('Vaga não encontrada');
-    }
-
-    // O restaurantId vem do token: um restaurante não pausa/encerra vaga alheia.
-    if (vaga.restaurantId !== input.restaurantId) {
-      throw new ForbiddenException(
-        'Você não tem permissão para alterar o status desta vaga',
-      );
-    }
+    const vaga = await findOwnedJob(
+      this.prisma,
+      input.jobId,
+      input.restaurantId,
+    );
 
     if (!TRANSICOES_PERMITIDAS[vaga.status].includes(input.status)) {
       throw new UnprocessableEntityException(
@@ -63,15 +40,11 @@ export class UpdateJobStatusUseCase {
 
     try {
       const vagaAtualizada = await this.prisma.job.update({
-        // O `status` no where é a rede de segurança contra corrida: se outra
-        // requisição mudou o status entre o findUnique e aqui (ex.: encerrou
-        // enquanto esta pausava), nenhuma linha casa e o Prisma lança P2025 —
-        // em vez de "ressuscitar" uma vaga já encerrada.
+        // Fecha a corrida: se outra requisição mudou o status, nenhuma linha casa.
         where: { id: input.jobId, status: vaga.status },
         data: {
           status: input.status,
-          // RNF12: o momento do encerramento fica gravado para auditoria.
-          // Como ENCERRADA é final, closedAt nunca é sobrescrito depois.
+          // RNF12: ENCERRADA é final, então closedAt nunca é sobrescrito.
           ...(input.status === JobStatus.ENCERRADA
             ? { closedAt: new Date() }
             : {}),
@@ -80,15 +53,10 @@ export class UpdateJobStatusUseCase {
 
       return toJobPostingResponse(vagaAtualizada);
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        throw new ConflictException(
-          'O status da vaga foi alterado por outra requisição. Tente novamente.',
-        );
-      }
-      throw error;
+      rethrowJobConflict(
+        error,
+        'O status da vaga foi alterado por outra requisição. Tente novamente.',
+      );
     }
   }
 }

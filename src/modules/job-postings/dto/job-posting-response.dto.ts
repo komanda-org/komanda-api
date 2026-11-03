@@ -13,9 +13,7 @@ export interface JobPostingResponseDto {
   createdAt: Date;
 }
 
-// Monta a resposta só com campos públicos — updatedAt/deletedAt/active/closedAt
-// do modelo Prisma não vazam para o consumidor da API. Compartilhado entre
-// criar, editar e mudar status da vaga, para as três rotas responderem igual.
+// Só campos públicos: updatedAt/deletedAt/active/closedAt não vazam na resposta.
 export function toJobPostingResponse(vaga: Job): JobPostingResponseDto {
   return {
     id: vaga.id,
