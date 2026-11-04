@@ -134,6 +134,7 @@ model Job {
   requirements String?      @db.Text
   salary       Decimal?     @db.Decimal(10, 2)
   contractType ContractType @map("contract_type")
+  shift        String?      @db.VarChar(30)
   status       JobStatus    @default(ABERTA)
   urgent       Boolean      @default(false)
   closedAt     DateTime?    @map("closed_at")

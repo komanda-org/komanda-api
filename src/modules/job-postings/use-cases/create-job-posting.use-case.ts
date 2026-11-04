@@ -12,6 +12,7 @@ interface CreateJobPostingInput {
   requirements?: string;
   salary?: number;
   contractType: ContractType;
+  shift?: string;
   urgent?: boolean;
   restaurantId: string;
 }
@@ -43,6 +44,7 @@ export class CreateJobPostingUseCase {
           requirements: input.requirements,
           salary: input.salary,
           contractType: input.contractType,
+          shift: input.shift,
           urgent: input.urgent,
           restaurantId: input.restaurantId,
         },

@@ -65,6 +65,7 @@ export class JobPostingsController {
       requirements: dto.requirements,
       salary: dto.salary,
       contractType: dto.contractType,
+      shift: dto.shift,
       urgent: dto.urgent,
       restaurantId: req.user.id,
     });

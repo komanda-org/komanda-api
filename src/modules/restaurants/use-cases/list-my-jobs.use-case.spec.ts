@@ -25,6 +25,7 @@ describe('ListMyJobsUseCase', () => {
     requirements: 'Experiência mínima de 2 anos',
     salary: new Prisma.Decimal('3500.00'),
     contractType: ContractType.CLT,
+    shift: 'NOITE',
     status: JobStatus.ABERTA,
     urgent: true,
     createdAt,
@@ -50,6 +51,7 @@ describe('ListMyJobsUseCase', () => {
           requirements: 'Experiência mínima de 2 anos',
           salary: 3500,
           contractType: ContractType.CLT,
+          shift: 'NOITE',
           status: JobStatus.ABERTA,
           urgent: true,
           createdAt,
@@ -59,6 +61,15 @@ describe('ListMyJobsUseCase', () => {
       skip: 0,
       take: 20,
     });
+  });
+
+  it('devolve shift null para vagas criadas antes da coluna de turno', async () => {
+    prisma.job.findMany.mockResolvedValue([{ ...jobRow, shift: null }]);
+    prisma.job.count.mockResolvedValue(1);
+
+    const result = await useCase.execute({ restaurantId: RESTAURANTE_ID });
+
+    expect(result.data[0].shift).toBeNull();
   });
 
   it('busca somente as vagas do restaurante do token, ativas e não excluídas', async () => {

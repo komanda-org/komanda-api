@@ -7,6 +7,7 @@ export interface JobPostingResponseDto {
   requirements?: string;
   salary?: number;
   contractType: ContractType;
+  shift?: string;
   status: JobStatus;
   urgent: boolean;
   restaurantId: string;
@@ -22,6 +23,7 @@ export function toJobPostingResponse(vaga: Job): JobPostingResponseDto {
     requirements: vaga.requirements ?? undefined,
     salary: vaga.salary?.toNumber(),
     contractType: vaga.contractType,
+    shift: vaga.shift ?? undefined,
     status: vaga.status,
     urgent: vaga.urgent,
     restaurantId: vaga.restaurantId,

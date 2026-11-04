@@ -7,6 +7,7 @@ export interface MyJobDto {
   requirements: string | null;
   salary: number | null;
   contractType: ContractType;
+  shift: string | null;
   status: JobStatus;
   urgent: boolean;
   createdAt: Date;
