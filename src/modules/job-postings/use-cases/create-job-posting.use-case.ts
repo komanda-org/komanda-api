@@ -5,6 +5,9 @@ import { JobPostingResponseDto } from '../dto/job-posting-response.dto';
 import { NOTIFICACAO_SERVICE } from 'src/modules/notifications/notifications.module';
 import type { INotificacaoService } from 'src/modules/notifications/interfaces/notification-service.interface';
 
+// Teto de notificações por vaga: mantém o pior caso do POST /vagas conhecido.
+export const MAX_PROFISSIONAIS_NOTIFICADOS = 500;
+
 interface CreateJobPostingInput {
   title: string;
   description: string;
@@ -124,11 +127,19 @@ export class CreateJobPostingUseCase {
         },
         select: { userId: true },
         // ponytail: teto de 500 + ordem determinística (mais antigos primeiro).
-        // Profissionais além do teto não recebem notificação nesta versão
-        // mover o fan-out para background (fila) quando isso importar.
-        orderBy: { createdAt: 'asc' },
-        take: 500,
+        // createdAt pode empatar (cadastros em lote), então userId desempata e
+        // garante que o corte do teto seja sempre o mesmo.
+        // Profissionais além do teto não recebem notificação nesta versão;
+        // TODO(KMD-66): mover o fan-out para background (fila) quando isso importar.
+        orderBy: [{ createdAt: 'asc' }, { userId: 'asc' }],
+        take: MAX_PROFISSIONAIS_NOTIFICADOS,
       });
+
+      if (profissionais.length === MAX_PROFISSIONAIS_NOTIFICADOS) {
+        this.logger.warn(
+          `Vaga ${vaga.id}: teto de ${MAX_PROFISSIONAIS_NOTIFICADOS} notificações atingido (prefixo ${prefixoCep}), profissionais além do teto não foram notificados`,
+        );
+      }
 
       await this.notificacaoService.createMany(
         profissionais.map((p) => ({

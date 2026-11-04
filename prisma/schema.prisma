@@ -73,6 +73,7 @@ model Professional {
   candidaturas    Candidatura[]
   avaliacoes Avaliacao[]
 
+  @@index([zipCode])
   @@map("professionals")
 }
 

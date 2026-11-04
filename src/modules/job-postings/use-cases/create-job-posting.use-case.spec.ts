@@ -2,7 +2,10 @@ import { Logger, NotFoundException } from '@nestjs/common';
 import { ContractType, JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { INotificacaoService } from 'src/modules/notifications/interfaces/notification-service.interface';
-import { CreateJobPostingUseCase } from './create-job-posting.use-case';
+import {
+  CreateJobPostingUseCase,
+  MAX_PROFISSIONAIS_NOTIFICADOS,
+} from './create-job-posting.use-case';
 
 // Mock tipado no lugar de `any`: só declaramos os métodos do Prisma que este
 // use case realmente usa. Se ele passar a chamar outro método, o TS acusa.
@@ -264,7 +267,41 @@ describe('CreateJobPostingUseCase', () => {
           userId: { not: restaurantId },
         },
         select: { userId: true },
+        // Mais antigos primeiro; userId desempata cadastros no mesmo instante.
+        orderBy: [{ createdAt: 'asc' }, { userId: 'asc' }],
+        take: MAX_PROFISSIONAIS_NOTIFICADOS,
       });
+    });
+
+    it('avisa no log quando o teto de notificações é atingido', async () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+      prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
+      prisma.job.create.mockResolvedValue(vagaCriada);
+      prisma.professional.findMany.mockResolvedValue(
+        Array.from({ length: MAX_PROFISSIONAIS_NOTIFICADOS }, (_, i) => ({
+          userId: `prof-${i}`,
+        })),
+      );
+
+      await useCase.execute(input);
+
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('job-1'));
+      expect(notificacaoService.createMany).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ userId: 'prof-0' }),
+        ]) as unknown,
+      );
+    });
+
+    it('não avisa no log quando o resultado fica abaixo do teto', async () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+      prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
+      prisma.job.create.mockResolvedValue(vagaCriada);
+      prisma.professional.findMany.mockResolvedValue([{ userId: 'prof-1' }]);
+
+      await useCase.execute(input);
+
+      expect(warn).not.toHaveBeenCalled();
     });
 
     it('normaliza CEP do restaurante sem hífen ou com espaços', async () => {
