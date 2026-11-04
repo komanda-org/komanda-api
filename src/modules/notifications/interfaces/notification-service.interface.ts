@@ -16,5 +16,6 @@ export interface INotificacaoService {
   // Inserção em lote (um único INSERT); devolve quantas linhas foram gravadas.
   createMany(params: CreateNotificacaoParams[]): Promise<number>;
   // Pronto para o futuro módulo de chat (RF08): chamar após persistir a mensagem.
+  // Rejeita se o banco falhar: o chamador decide se engole (log) ou relança.
   notifyNewMessage(params: NewMessageNotificationParams): Promise<void>;
 }

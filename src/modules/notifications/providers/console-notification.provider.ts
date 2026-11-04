@@ -49,6 +49,12 @@ export class ConsoleNotificationProvider implements INotificacaoService {
     return count;
   }
 
+  // Sem try/catch de propósito, igual a create/createMany: o erro de banco sobe.
+  // O fan-out de vagas "engole" o erro no use case (create-job-posting), não
+  // aqui, porque lá a vaga já foi criada e a notificação é efeito colateral.
+  // O chat segue a mesma regra: o use case de envio de mensagem chama isto
+  // DEPOIS de persistir a mensagem e decide se loga e segue ou se relança.
+  // Engolir aqui esconderia a falha de quem precisa decidir.
   async notifyNewMessage(params: NewMessageNotificationParams): Promise<void> {
     await this.create({
       userId: params.recipientId,

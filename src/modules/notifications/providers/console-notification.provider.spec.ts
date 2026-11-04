@@ -109,5 +109,35 @@ describe('ConsoleNotificationProvider', () => {
       // O contrato não recebe o remetente: não há como notificá-lo por engano.
       expect(prisma.notificacao.createMany).not.toHaveBeenCalled();
     });
+
+    it('propaga erro do banco para o chamador decidir (não engole)', async () => {
+      prisma.notificacao.create.mockRejectedValue(new Error('db down'));
+
+      await expect(
+        provider.notifyNewMessage({
+          recipientId: 'destinatario-1',
+          senderName: 'Cantina da Nonna',
+          preview: 'Oi',
+        }),
+      ).rejects.toThrow('db down');
+      expect(log).not.toHaveBeenCalled();
+    });
+
+    it('corta o título em 200 chars quando o senderName é longo', async () => {
+      const prefixo = 'Nova mensagem de ';
+      const senderName = 'N'.repeat(300);
+
+      await provider.notifyNewMessage({
+        recipientId: 'destinatario-1',
+        senderName,
+        preview: 'Oi',
+      });
+
+      const tituloEsperado = (prefixo + senderName).slice(0, 200);
+      expect(tituloEsperado).toHaveLength(200);
+      expect(prisma.notificacao.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ titulo: tituloEsperado }) as unknown,
+      });
+    });
   });
 });
