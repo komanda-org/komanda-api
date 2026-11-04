@@ -8,6 +8,10 @@ import { ListJobApplicantsUseCase } from './use-cases/list-job-applicants.use-ca
 import { UpdateApplicationStatusUseCase } from './use-cases/update-application-status.use-case';
 import { UpdateJobPostingUseCase } from './use-cases/update-job-posting.use-case';
 import { UpdateJobStatusUseCase } from './use-cases/update-job-status.use-case';
+import { AssertChatAccessUseCase } from './use-cases/assert-chat-access';
+import { SendMessageUseCase } from './use-cases/send-message.use-case';
+import { ListMessagesUseCase } from './use-cases/list-messages.use-case';
+import { MessagesGateway } from './messages.gateway';
 
 // PrismaModule é @Global, então não precisa ser importado aqui.
 // AuthModule sim: os guards presos no controller são instanciados no contexto
@@ -22,6 +26,10 @@ import { UpdateJobStatusUseCase } from './use-cases/update-job-status.use-case';
     UpdateApplicationStatusUseCase,
     UpdateJobPostingUseCase,
     UpdateJobStatusUseCase,
+    AssertChatAccessUseCase,
+    SendMessageUseCase,
+    ListMessagesUseCase,
+    MessagesGateway,
   ],
 })
 export class JobPostingsModule {}
