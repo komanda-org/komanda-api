@@ -14,6 +14,7 @@ export interface JobResponseDto {
   contractType: ContractType;
   shift: string | null;
   status: JobStatus;
+  urgent: boolean;
   restaurantId: string;
   restaurant: JobRestaurantDto;
   createdAt: Date;

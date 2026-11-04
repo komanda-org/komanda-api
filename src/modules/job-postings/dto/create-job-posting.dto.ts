@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEnum,
   IsNumber,
   IsOptional,
@@ -61,4 +62,13 @@ export class CreateJobPostingDto {
     message: 'O turno não pode passar de 30 caracteres',
   })
   shift?: string;
+
+  @ApiProperty({ required: false, default: false })
+  @IsOptional()
+  // null = "não enviado": a coluna é NOT NULL, então null não pode chegar ao Prisma.
+  @Transform(({ value }: { value: unknown }) => value ?? undefined)
+  @IsBoolean({
+    message: 'O campo urgente deve ser verdadeiro ou falso',
+  })
+  urgent?: boolean;
 }

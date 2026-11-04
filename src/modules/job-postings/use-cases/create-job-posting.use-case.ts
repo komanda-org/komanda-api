@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ContractType, Prisma } from '@prisma/client';
-import { JobPostingResponseDto } from '../dto/job-posting-response.dto';
+import {
+  JobPostingResponseDto,
+  toJobPostingResponse,
+} from '../dto/job-posting-response.dto';
 
 interface CreateJobPostingInput {
   title: string;
@@ -10,6 +13,7 @@ interface CreateJobPostingInput {
   salary?: number;
   contractType: ContractType;
   shift?: string;
+  urgent?: boolean;
   restaurantId: string;
 }
 
@@ -41,24 +45,12 @@ export class CreateJobPostingUseCase {
           salary: input.salary,
           contractType: input.contractType,
           shift: input.shift,
+          urgent: input.urgent,
           restaurantId: input.restaurantId,
         },
       });
 
-      // Monta a resposta só com campos públicos — updatedAt/deletedAt/active
-      // do modelo Prisma não vazam para o consumidor da API.
-      return {
-        id: vaga.id,
-        title: vaga.title,
-        description: vaga.description,
-        requirements: vaga.requirements ?? undefined,
-        salary: vaga.salary?.toNumber(),
-        contractType: vaga.contractType,
-        shift: vaga.shift ?? undefined,
-        status: vaga.status,
-        restaurantId: vaga.restaurantId,
-        createdAt: vaga.createdAt,
-      };
+      return toJobPostingResponse(vaga);
     } catch (error) {
       // Camada 2: rede de segurança contra corrida — o restaurante pode ter
       // sido removido entre a checagem acima e o create (violação de FK, P2003).

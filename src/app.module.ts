@@ -13,6 +13,7 @@ import { JobsModule } from './modules/jobs/Jobs.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { UsersModule } from './modules/users/users.module';
 import { ReviewsModule } from './modules/reviews/Reviews.module';
+import { DenunciasModule } from './modules/denuncias/Denuncias.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { ReviewsModule } from './modules/reviews/Reviews.module';
     NotificationsModule,
     UsersModule,
     ReviewsModule,
+    DenunciasModule,
   ],
   controllers: [AppController],
   providers: [AppService],

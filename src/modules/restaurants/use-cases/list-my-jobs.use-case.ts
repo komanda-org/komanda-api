@@ -45,6 +45,7 @@ export class ListMyJobsUseCase {
         contractType: job.contractType,
         shift: job.shift,
         status: job.status,
+        urgent: job.urgent,
         createdAt: job.createdAt,
       })),
       total,

@@ -23,6 +23,7 @@ describe('SearchJobsUseCase', () => {
     contractType: ContractType.CLT,
     shift: 'NOITE',
     status: JobStatus.ABERTA,
+    urgent: true,
     restaurantId: 'restaurant-1',
     restaurant: {
       restaurantName: 'Restaurante Exemplo',
@@ -65,6 +66,7 @@ describe('SearchJobsUseCase', () => {
     expect(result.take).toBe(10);
     expect(result.data[0].title).toBe('Chef de cozinha');
     expect(result.data[0].contractType).toBe(ContractType.CLT);
+    expect(result.data[0].urgent).toBe(true);
     expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({

@@ -20,6 +20,7 @@ describe('JobsController', () => {
         contractType: ContractType.CLT,
         shift: 'NOITE',
         status: JobStatus.ABERTA,
+        urgent: false,
         restaurantId: 'restaurant-1',
         restaurant: {
           restaurantName: 'Restaurante Exemplo',

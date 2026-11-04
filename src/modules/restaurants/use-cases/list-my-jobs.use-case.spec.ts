@@ -27,6 +27,7 @@ describe('ListMyJobsUseCase', () => {
     contractType: ContractType.CLT,
     shift: 'NOITE',
     status: JobStatus.ABERTA,
+    urgent: true,
     createdAt,
   };
 
@@ -52,6 +53,7 @@ describe('ListMyJobsUseCase', () => {
           contractType: ContractType.CLT,
           shift: 'NOITE',
           status: JobStatus.ABERTA,
+          urgent: true,
           createdAt,
         },
       ],

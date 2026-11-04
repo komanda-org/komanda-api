@@ -80,6 +80,7 @@ export class SearchJobsUseCase {
         contractType: job.contractType,
         shift: job.shift,
         status: job.status,
+        urgent: job.urgent,
         restaurantId: job.restaurantId,
         restaurant: {
           restaurantName: job.restaurant.restaurantName,

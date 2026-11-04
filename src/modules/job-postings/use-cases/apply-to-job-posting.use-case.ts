@@ -54,7 +54,7 @@ export class ApplyToJobPostingUseCase {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-              throw new ConflictException('Você já se candidatou a esta vaga');
+        throw new ConflictException('Você já se candidatou a esta vaga');
       }
       throw error;
     }
