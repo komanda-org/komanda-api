@@ -19,6 +19,7 @@ describe('JobsController', () => {
         salary: '3000.00',
         contractType: ContractType.CLT,
         status: JobStatus.ABERTA,
+        urgent: false,
         restaurantId: 'restaurant-1',
         restaurant: {
           restaurantName: 'Restaurante Exemplo',

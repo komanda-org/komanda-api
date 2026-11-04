@@ -79,6 +79,8 @@ describe('CreateJobPostingUseCase', () => {
       salary: new Prisma.Decimal('4500.00'),
       contractType: ContractType.CLT,
       status: JobStatus.ABERTA,
+      urgent: false,
+      closedAt: null,
       restaurantId,
       createdAt,
       updatedAt: createdAt,
@@ -96,6 +98,7 @@ describe('CreateJobPostingUseCase', () => {
       salary: 4500,
       contractType: ContractType.CLT,
       status: JobStatus.ABERTA,
+      urgent: false,
       restaurantId,
       createdAt,
     });
@@ -106,6 +109,30 @@ describe('CreateJobPostingUseCase', () => {
     expect(result).not.toHaveProperty('updatedAt');
     expect(result).not.toHaveProperty('deletedAt');
     expect(result).not.toHaveProperty('active');
+    expect(result).not.toHaveProperty('closedAt');
+  });
+
+  it('repassa urgent ao banco e devolve o valor gravado', async () => {
+    prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
+    prisma.job.create.mockResolvedValue({
+      id: 'job-3',
+      title: input.title,
+      description: input.description,
+      requirements: null,
+      salary: null,
+      contractType: ContractType.CLT,
+      status: JobStatus.ABERTA,
+      urgent: true,
+      restaurantId,
+      createdAt: new Date(),
+    });
+
+    const result = await useCase.execute({ ...input, urgent: true });
+
+    expect(prisma.job.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ urgent: true }) as unknown,
+    });
+    expect(result.urgent).toBe(true);
   });
 
   it('grava restaurantId vindo do token, nunca do body', async () => {

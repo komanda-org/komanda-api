@@ -26,6 +26,7 @@ describe('ListMyJobsUseCase', () => {
     salary: new Prisma.Decimal('3500.00'),
     contractType: ContractType.CLT,
     status: JobStatus.ABERTA,
+    urgent: true,
     createdAt,
   };
 
@@ -50,6 +51,7 @@ describe('ListMyJobsUseCase', () => {
           salary: 3500,
           contractType: ContractType.CLT,
           status: JobStatus.ABERTA,
+          urgent: true,
           createdAt,
         },
       ],

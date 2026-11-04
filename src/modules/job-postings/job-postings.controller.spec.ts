@@ -11,12 +11,16 @@ import { JobPostingsController } from './job-postings.controller';
 import { ApplyToJobPostingUseCase } from './use-cases/apply-to-job-posting.use-case';
 import { CreateJobPostingUseCase } from './use-cases/create-job-posting.use-case';
 import { ListJobApplicantsUseCase } from './use-cases/list-job-applicants.use-case';
+import { UpdateJobPostingUseCase } from './use-cases/update-job-posting.use-case';
+import { UpdateJobStatusUseCase } from './use-cases/update-job-status.use-case';
 
 describe('JobPostingsController', () => {
   let controller: JobPostingsController;
   let createJobPostingUseCase: CreateJobPostingUseCase;
   let applyToJobPostingUseCase: ApplyToJobPostingUseCase;
   let listJobApplicantsUseCase: ListJobApplicantsUseCase;
+  let updateJobPostingUseCase: UpdateJobPostingUseCase;
+  let updateJobStatusUseCase: UpdateJobStatusUseCase;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -36,6 +40,18 @@ describe('JobPostingsController', () => {
         },
         {
           provide: ListJobApplicantsUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: UpdateJobPostingUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: UpdateJobStatusUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -62,6 +78,12 @@ describe('JobPostingsController', () => {
     listJobApplicantsUseCase = module.get<ListJobApplicantsUseCase>(
       ListJobApplicantsUseCase,
     );
+    updateJobPostingUseCase = module.get<UpdateJobPostingUseCase>(
+      UpdateJobPostingUseCase,
+    );
+    updateJobStatusUseCase = module.get<UpdateJobStatusUseCase>(
+      UpdateJobStatusUseCase,
+    );
   });
 
   it('should be defined', () => {
@@ -77,6 +99,7 @@ describe('JobPostingsController', () => {
         'Experiência prévia, liderança e disponibilidade de horário.',
       salary: 4500,
       contractType: ContractType.CLT,
+      urgent: true,
     };
 
     const req = {
@@ -94,6 +117,7 @@ describe('JobPostingsController', () => {
       salary: dto.salary,
       contractType: dto.contractType,
       status: JobStatus.ABERTA,
+      urgent: true,
       restaurantId: req.user.id,
       createdAt: new Date(),
     };
@@ -110,8 +134,75 @@ describe('JobPostingsController', () => {
       requirements: dto.requirements,
       salary: dto.salary,
       contractType: dto.contractType,
+      urgent: true,
       restaurantId: req.user.id,
     });
+  });
+
+  it('edita a vaga usando o restaurante do token e repassa só os campos do body', async () => {
+    const req = {
+      user: { id: 'restaurant-1', role: Role.RESTAURANTE },
+    };
+
+    const response = {
+      id: 'job-1',
+      title: 'Chef de Cozinha',
+      description:
+        'Vaga para chef com experiência em cozinha italiana e gestão de equipe.',
+      contractType: ContractType.CLT,
+      status: JobStatus.ABERTA,
+      urgent: true,
+      restaurantId: 'restaurant-1',
+      createdAt: new Date(),
+    };
+
+    const executeSpy = jest
+      .spyOn(updateJobPostingUseCase, 'execute')
+      .mockResolvedValue(response);
+
+    const result = await controller.update('job-1', { urgent: true }, req);
+
+    expect(executeSpy).toHaveBeenCalledWith({
+      jobId: 'job-1',
+      restaurantId: 'restaurant-1',
+      changes: expect.objectContaining({ urgent: true }) as unknown,
+    });
+    expect(result).toBe(response);
+  });
+
+  it('muda o status da vaga usando o restaurante do token', async () => {
+    const req = {
+      user: { id: 'restaurant-1', role: Role.RESTAURANTE },
+    };
+
+    const response = {
+      id: 'job-1',
+      title: 'Chef de Cozinha',
+      description:
+        'Vaga para chef com experiência em cozinha italiana e gestão de equipe.',
+      contractType: ContractType.CLT,
+      status: JobStatus.PAUSADA,
+      urgent: false,
+      restaurantId: 'restaurant-1',
+      createdAt: new Date(),
+    };
+
+    const executeSpy = jest
+      .spyOn(updateJobStatusUseCase, 'execute')
+      .mockResolvedValue(response);
+
+    const result = await controller.updateStatus(
+      'job-1',
+      { status: JobStatus.PAUSADA },
+      req,
+    );
+
+    expect(executeSpy).toHaveBeenCalledWith({
+      jobId: 'job-1',
+      restaurantId: 'restaurant-1',
+      status: JobStatus.PAUSADA,
+    });
+    expect(result).toBe(response);
   });
 
   it('candidata o profissional do token e mapeia o ApplicationResponseDto', async () => {

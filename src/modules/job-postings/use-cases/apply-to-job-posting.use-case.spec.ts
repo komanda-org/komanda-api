@@ -80,17 +80,17 @@ describe('ApplyToJobPostingUseCase', () => {
     expect(prisma.candidatura.create).not.toHaveBeenCalled();
   });
 
-  it('lança UnprocessableEntityException quando a vaga não está aberta', async () => {
-    prisma.job.findUnique.mockResolvedValue({
-      ...vagaAberta,
-      status: JobStatus.ENCERRADA,
-    });
+  it.each([JobStatus.PAUSADA, JobStatus.ENCERRADA])(
+    'lança UnprocessableEntityException quando a vaga está %s',
+    async (status) => {
+      prisma.job.findUnique.mockResolvedValue({ ...vagaAberta, status });
 
-    await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toThrow(
-      UnprocessableEntityException,
-    );
-    expect(prisma.candidatura.create).not.toHaveBeenCalled();
-  });
+      await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toThrow(
+        UnprocessableEntityException,
+      );
+      expect(prisma.candidatura.create).not.toHaveBeenCalled();
+    },
+  );
 
   it('lança NotFoundException quando a vaga foi excluída logicamente', async () => {
     // `active` continua true de propósito: isola o deletedAt como causa do 404.
