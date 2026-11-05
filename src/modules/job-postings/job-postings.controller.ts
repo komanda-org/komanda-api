@@ -30,9 +30,11 @@ import { JobPostingResponseDto } from './dto/job-posting-response.dto';
 import { ListJobApplicantsQueryDto } from './dto/list-job-applicants-query.dto';
 import { UpdateJobPostingDto } from './dto/update-job-posting.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
+import { UserChatResponseDto } from './dto/user-chat-response.dto';
 import { ApplyToJobPostingUseCase } from './use-cases/apply-to-job-posting.use-case';
 import { CreateJobPostingUseCase } from './use-cases/create-job-posting.use-case';
 import { ListJobApplicantsUseCase } from './use-cases/list-job-applicants.use-case';
+import { ListUserChatsUseCase } from './use-cases/list-user-chats.use-case';
 import { UpdateJobPostingUseCase } from './use-cases/update-job-posting.use-case';
 import { UpdateJobStatusUseCase } from './use-cases/update-job-status.use-case';
 
@@ -45,6 +47,7 @@ export class JobPostingsController {
     private readonly createJobPosting: CreateJobPostingUseCase,
     private readonly applyToJobPosting: ApplyToJobPostingUseCase,
     private readonly listJobApplicants: ListJobApplicantsUseCase,
+    private readonly listUserChats: ListUserChatsUseCase,
     private readonly updateJobPosting: UpdateJobPostingUseCase,
     private readonly updateJobStatus: UpdateJobStatusUseCase,
   ) {}
@@ -177,6 +180,20 @@ export class JobPostingsController {
       status: query.status,
       skip: query.skip,
       take: query.take,
+    });
+  }
+
+  @Get('my-chats')
+  @HttpCode(HttpStatus.OK)
+  @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
+  @ApiOperation({ summary: 'Listar conversas do usuário (matches aprovados)' })
+  @ApiResponse({ status: 200, description: 'Lista de conversas', type: [UserChatResponseDto] })
+  async listMyChats(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<UserChatResponseDto[]> {
+    return this.listUserChats.execute({
+      userId: req.user.id,
+      userRole: req.user.role,
     });
   }
 }

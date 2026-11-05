@@ -11,6 +11,7 @@ import { UpdateJobStatusUseCase } from './use-cases/update-job-status.use-case';
 import { AssertChatAccessUseCase } from './use-cases/assert-chat-access';
 import { SendMessageUseCase } from './use-cases/send-message.use-case';
 import { ListMessagesUseCase } from './use-cases/list-messages.use-case';
+import { ListUserChatsUseCase } from './use-cases/list-user-chats.use-case';
 import { MessagesGateway } from './messages.gateway';
 
 // PrismaModule é @Global, então não precisa ser importado aqui.
@@ -29,6 +30,7 @@ import { MessagesGateway } from './messages.gateway';
     AssertChatAccessUseCase,
     SendMessageUseCase,
     ListMessagesUseCase,
+    ListUserChatsUseCase,
     MessagesGateway,
   ],
 })
