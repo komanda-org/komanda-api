@@ -104,7 +104,75 @@ nest g service nome    # Gera um service
 nest g controller nome # Gera um controller
 ```
 
-## Estrutura do projeto
+## Chat em tempo real (WebSocket)
+
+A API expõe um gateway WebSocket para chat pós-match entre profissional aprovado e restaurante dono da vaga.
+
+### Conexão
+
+```javascript
+import { io } from 'socket.io-client';
+
+const socket = io('http://localhost:3000', {
+  auth: { token: '<JWT_ACCESS_TOKEN>' },
+  transports: ['websocket'],
+});
+```
+
+### Eventos
+
+| Direção | Evento | Payload | Ack |
+|---|---|---|---|
+| C→S | `chat:join` | `{ jobId, take? }` | `{ ok: true, messages, hasMore }` |
+| C→S | `chat:leave` | `{ jobId }` | `{ ok: true }` |
+| C→S | `chat:send` | `{ jobId, content }` | `{ ok: true, message }` |
+| C→S | `chat:history` | `{ jobId, before?, take? }` | `{ ok: true, messages, hasMore }` |
+| S→C | `chat:message` | `MessageResponseDto` | — (broadcast na room) |
+| S→C | `chat:error` | `{ statusCode, message }` | — (erro fora de request, ex.: rate limit) |
+
+**Exemplo `chat:send`:**
+```javascript
+socket.emit('chat:send', { jobId: 'uuid-da-vaga', content: 'Olá!' }, (ack) => {
+  if (ack.ok) {
+    console.log('Enviado:', ack.message);
+  } else {
+    console.error('Erro:', ack.error);
+  }
+});
+```
+
+**Recebendo mensagens (broadcast):**
+```javascript
+socket.on('chat:message', (msg) => {
+  console.log('Nova mensagem:', msg.content, 'de', msg.senderId);
+});
+```
+
+### Regras de acesso
+
+- Só entra na room e envia/listar mensagens quem:
+  - É o **restaurante dono da vaga** (`job.restaurantId === userId`), OU
+  - É **profissional com candidatura APROVADA** naquela vaga.
+- Qualquer outra tentativa retorna `403` no ack: `"Só é possível conversar após uma candidatura aprovada na vaga"`.
+
+### Paginação de histórico
+
+- `chat:join` e `chat:history` aceitam `take` (padrão 50, máx 100).
+- `chat:history` aceita `before` (ISO 8601 `createdAt`) para scroll para trás.
+- Resposta sempre em ordem **cronológica ascendente** (mais antiga primeiro).
+- `hasMore: true` indica que há mais mensagens anteriores.
+
+### Rate limiting
+
+- Janela deslizante: **20 eventos / 10 segundos** por socket.
+- Exceder retorna ack com `{ ok: false, error: { statusCode: 429, message: 'Muitas requisições...' } }` e emite `chat:error`.
+
+### Reconexão
+
+- Em caso de queda, reconecte com token válido (renovado se expirado) e chame `chat:join` novamente — o histórico retorna o que faltou.
+- JWT expira no meio da conexão: o socket não cai sozinho; cliente deve monitorar `exp` e reconectar proativamente.
+
+### Estrutura do projeto
 
 ```
 src/

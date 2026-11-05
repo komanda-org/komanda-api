@@ -11,6 +11,7 @@ import { JobPostingsController } from './job-postings.controller';
 import { ApplyToJobPostingUseCase } from './use-cases/apply-to-job-posting.use-case';
 import { CreateJobPostingUseCase } from './use-cases/create-job-posting.use-case';
 import { ListJobApplicantsUseCase } from './use-cases/list-job-applicants.use-case';
+import { ListUserChatsUseCase } from './use-cases/list-user-chats.use-case';
 import { UpdateJobPostingUseCase } from './use-cases/update-job-posting.use-case';
 import { UpdateJobStatusUseCase } from './use-cases/update-job-status.use-case';
 
@@ -19,6 +20,7 @@ describe('JobPostingsController', () => {
   let createJobPostingUseCase: CreateJobPostingUseCase;
   let applyToJobPostingUseCase: ApplyToJobPostingUseCase;
   let listJobApplicantsUseCase: ListJobApplicantsUseCase;
+  let listUserChatsUseCase: ListUserChatsUseCase;
   let updateJobPostingUseCase: UpdateJobPostingUseCase;
   let updateJobStatusUseCase: UpdateJobStatusUseCase;
 
@@ -40,6 +42,12 @@ describe('JobPostingsController', () => {
         },
         {
           provide: ListJobApplicantsUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: ListUserChatsUseCase,
           useValue: {
             execute: jest.fn(),
           },
@@ -77,6 +85,9 @@ describe('JobPostingsController', () => {
     );
     listJobApplicantsUseCase = module.get<ListJobApplicantsUseCase>(
       ListJobApplicantsUseCase,
+    );
+    listUserChatsUseCase = module.get<ListUserChatsUseCase>(
+      ListUserChatsUseCase,
     );
     updateJobPostingUseCase = module.get<UpdateJobPostingUseCase>(
       UpdateJobPostingUseCase,
@@ -264,6 +275,36 @@ describe('JobPostingsController', () => {
       status: CandidaturaStatus.PENDENTE,
       skip: 10,
       take: 5,
+    });
+    expect(result).toBe(response);
+  });
+
+  it('lista as conversas do usuário logado', async () => {
+    const req = {
+      user: { id: 'professional-1', role: Role.PROFISSIONAL },
+    };
+
+    const response = [
+      {
+        jobId: 'job-1',
+        jobTitle: 'Chef de Cozinha',
+        otherPartyName: 'Restaurante Teste',
+        otherPartyRole: Role.RESTAURANTE,
+        lastMessageContent: 'Olá!',
+        lastMessageTime: new Date('2024-01-15T10:00:00Z'),
+        unreadCount: 0,
+      },
+    ];
+
+    const executeSpy = jest
+      .spyOn(listUserChatsUseCase, 'execute')
+      .mockResolvedValue(response as any);
+
+    const result = await controller.listMyChats(req);
+
+    expect(executeSpy).toHaveBeenCalledWith({
+      userId: 'professional-1',
+      userRole: Role.PROFISSIONAL,
     });
     expect(result).toBe(response);
   });
