@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ContractType, Prisma } from '@prisma/client';
+import { ContractType, Job, Prisma } from '@prisma/client';
 import {
   JobPostingResponseDto,
   toJobPostingResponse,
 } from '../dto/job-posting-response.dto';
+import { NOTIFICACAO_SERVICE } from 'src/modules/notifications/notifications.module';
+import type { INotificacaoService } from 'src/modules/notifications/interfaces/notification-service.interface';
+
+// Teto de notificações por vaga: mantém o pior caso do POST /vagas conhecido.
+export const MAX_PROFISSIONAIS_NOTIFICADOS = 500;
 
 interface CreateJobPostingInput {
   title: string;
@@ -17,16 +22,34 @@ interface CreateJobPostingInput {
   restaurantId: string;
 }
 
+interface RestauranteDaVaga {
+  userId: string;
+  restaurantName: string;
+  zipCode: string;
+}
+
 @Injectable()
 export class CreateJobPostingUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(CreateJobPostingUseCase.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(NOTIFICACAO_SERVICE)
+    private readonly notificacaoService: INotificacaoService,
+  ) {}
 
   async execute(input: CreateJobPostingInput): Promise<JobPostingResponseDto> {
     // Camada 1: barra o restaurante inexistente antes de qualquer escrita.
     // Dá a mensagem clara e barata no caso normal (a maioria das requisições).
     const restaurante = await this.prisma.restaurant.findUnique({
       where: { userId: input.restaurantId },
-      select: { userId: true, active: true, deletedAt: true },
+      select: {
+        userId: true,
+        active: true,
+        deletedAt: true,
+        restaurantName: true,
+        zipCode: true,
+      },
     });
 
     // O token vive 7 dias, então ele sobrevive à desativação/exclusão lógica do
@@ -36,8 +59,9 @@ export class CreateJobPostingUseCase {
       throw new NotFoundException('Restaurante não encontrado');
     }
 
+    let vaga: Job;
     try {
-      const vaga = await this.prisma.job.create({
+      vaga = await this.prisma.job.create({
         data: {
           title: input.title,
           description: input.description,
@@ -49,8 +73,6 @@ export class CreateJobPostingUseCase {
           restaurantId: input.restaurantId,
         },
       });
-
-      return toJobPostingResponse(vaga);
     } catch (error) {
       // Camada 2: rede de segurança contra corrida — o restaurante pode ter
       // sido removido entre a checagem acima e o create (violação de FK, P2003).
@@ -61,6 +83,73 @@ export class CreateJobPostingUseCase {
         throw new NotFoundException('Restaurante não encontrado');
       }
       throw error;
+    }
+
+    // Fora do try acima: um erro na notificação nunca pode virar o 404 do P2003.
+    // A vaga já está gravada; notificar é efeito colateral e não quebra o fluxo.
+    await this.notificarProfissionaisCompativeis(vaga, restaurante);
+
+    // Resposta só com campos públicos — updatedAt/deletedAt/active
+    // do modelo Prisma não vazam para o consumidor da API.
+    return toJobPostingResponse(vaga);
+  }
+
+  // Critério RF08 (MVP): profissional compatível = CEP com os mesmos 5 primeiros
+  // dígitos do CEP do restaurante (subsetor dos Correios ≈ mesma região),
+  // ativo e não excluído. Profissional sem CEP não é notificado.
+  private async notificarProfissionaisCompativeis(
+    vaga: Job,
+    restaurante: RestauranteDaVaga,
+  ): Promise<void> {
+    // O CEP do restaurante é texto livre (só MaxLength): normaliza para dígitos.
+    const prefixoCep = restaurante.zipCode.replace(/\D/g, '').slice(0, 5);
+    if (prefixoCep.length < 5) {
+      this.logger.warn(
+        `Vaga ${vaga.id}: CEP do restaurante ${restaurante.userId} inválido, ninguém notificado`,
+      );
+      return;
+    }
+
+    try {
+      // Uma única query. startsWith casa "01310-100" e "01310100": o DTO do
+      // profissional garante 5 dígitos no início do CEP.
+      const profissionais = await this.prisma.professional.findMany({
+        where: {
+          zipCode: { startsWith: prefixoCep },
+          active: true,
+          deletedAt: null,
+          // A exclusão de conta marca só o User, então ele também é filtrado.
+          user: { active: true, deletedAt: null },
+          userId: { not: restaurante.userId },
+        },
+        select: { userId: true },
+        // ponytail: teto de 500 + ordem determinística (mais antigos primeiro).
+        // createdAt pode empatar (cadastros em lote), então userId desempata e
+        // garante que o corte do teto seja sempre o mesmo.
+        // Profissionais além do teto não recebem notificação nesta versão;
+        // TODO(KMD-66): mover o fan-out para background (fila) quando isso importar.
+        orderBy: [{ createdAt: 'asc' }, { userId: 'asc' }],
+        take: MAX_PROFISSIONAIS_NOTIFICADOS,
+      });
+
+      if (profissionais.length === MAX_PROFISSIONAIS_NOTIFICADOS) {
+        this.logger.warn(
+          `Vaga ${vaga.id}: teto de ${MAX_PROFISSIONAIS_NOTIFICADOS} notificações atingido (prefixo ${prefixoCep}), profissionais além do teto não foram notificados`,
+        );
+      }
+
+      await this.notificacaoService.createMany(
+        profissionais.map((p) => ({
+          userId: p.userId,
+          title: `Nova vaga perto de você: ${vaga.title}`,
+          message: `${restaurante.restaurantName} publicou a vaga "${vaga.title}".`,
+        })),
+      );
+    } catch (error) {
+      this.logger.error(
+        `Falha ao notificar profissionais da vaga ${vaga.id} (restaurante ${restaurante.userId})`,
+        error instanceof Error ? error.stack : String(error),
+      );
     }
   }
 }
