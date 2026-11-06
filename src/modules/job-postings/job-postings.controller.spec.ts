@@ -289,6 +289,7 @@ describe('JobPostingsController', () => {
         jobId: 'job-1',
         jobTitle: 'Chef de Cozinha',
         otherPartyName: 'Restaurante Teste',
+        otherPartyPhoto: null,
         otherPartyRole: Role.RESTAURANTE,
         lastMessageContent: 'Olá!',
         lastMessageTime: new Date('2024-01-15T10:00:00Z'),

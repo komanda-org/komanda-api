@@ -11,6 +11,9 @@ export class UserChatResponseDto {
   @ApiProperty()
   otherPartyName!: string;
 
+  @ApiProperty({ nullable: true })
+  otherPartyPhoto!: string | null;
+
   @ApiProperty({ enum: Role })
   otherPartyRole!: Role;
 
