@@ -11,6 +11,7 @@ interface ChatListItem {
   jobId: string;
   jobTitle: string;
   otherPartyName: string;
+  otherPartyPhoto: string | null;
   otherPartyRole: Role;
   lastMessageContent: string | null;
   lastMessageTime: Date | null;
@@ -53,6 +54,7 @@ export class ListUserChatsUseCase {
             professional: {
               select: {
                 fullName: true,
+                profilePhoto: true,
               },
             },
           },
@@ -78,6 +80,7 @@ export class ListUserChatsUseCase {
           jobId: job.id,
           jobTitle: job.title,
           otherPartyName: candidatura.professional.fullName,
+          otherPartyPhoto: candidatura.professional.profilePhoto ?? null,
           otherPartyRole: Role.PROFISSIONAL,
           lastMessageContent: lastMessage?.content ?? null,
           lastMessageTime: lastMessage?.createdAt ?? null,
@@ -104,6 +107,7 @@ export class ListUserChatsUseCase {
             restaurant: {
               select: {
                 restaurantName: true,
+                logoUrl: true,
               },
             },
           },
@@ -126,6 +130,7 @@ export class ListUserChatsUseCase {
         jobId: cand.job.id,
         jobTitle: cand.job.title,
         otherPartyName: cand.job.restaurant.restaurantName,
+        otherPartyPhoto: cand.job.restaurant.logoUrl ?? null,
         otherPartyRole: Role.RESTAURANTE,
         lastMessageContent: lastMessage?.content ?? null,
         lastMessageTime: lastMessage?.createdAt ?? null,

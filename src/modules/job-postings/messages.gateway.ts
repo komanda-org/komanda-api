@@ -112,6 +112,8 @@ export class MessagesGateway
 
   private readonly logger = new Logger(MessagesGateway.name);
   private readonly rateLimits = new Map<string, RateLimitEntry>();
+  /** jobId -> userIds na room: alimenta o chat:presence (quem esta online). */
+  private readonly roomUsers = new Map<string, Set<string>>();
 
   constructor(
     private readonly jwtService: JwtService,
@@ -152,6 +154,45 @@ export class MessagesGateway
       `Client disconnected: ${client.id} (user: ${client.data.user?.id})`,
     );
     this.rateLimits.delete(client.id);
+
+    const jobs: string[] = client.data.jobs ?? [];
+    for (const jobId of jobs) {
+      this.leaveRoom(jobId, client.data.user?.id);
+    }
+  }
+
+  /**
+   * Presenca: so marca "Conectado" quando HA OUTRA PESSOA na room (>= 2
+   * userIds distintos). Entrar sozinho nao emite nada.
+   */
+  private joinRoom(jobId: string, userId: string): void {
+    let users = this.roomUsers.get(jobId);
+    if (!users) {
+      users = new Set();
+      this.roomUsers.set(jobId, users);
+    }
+    users.add(userId);
+
+    if (users.size >= 2) {
+      this.server
+        .to(`job:${jobId}`)
+        .emit('chat:presence', { jobId, online: true });
+    }
+  }
+
+  private leaveRoom(jobId: string, userId: string | undefined): void {
+    if (!userId) return;
+    const users = this.roomUsers.get(jobId);
+    if (!users) return;
+
+    users.delete(userId);
+    if (users.size === 0) {
+      this.roomUsers.delete(jobId);
+    } else if (users.size < 2) {
+      this.server
+        .to(`job:${jobId}`)
+        .emit('chat:presence', { jobId, online: false });
+    }
   }
 
   private checkRateLimit(client: Socket): boolean {
@@ -202,6 +243,12 @@ export class MessagesGateway
 
       // Entra na room apenas após validação bem-sucedida
       client.join(`job:${data.jobId}`);
+      const jobs: string[] = client.data.jobs ?? [];
+      if (!jobs.includes(data.jobId)) {
+        jobs.push(data.jobId);
+        client.data.jobs = jobs;
+      }
+      this.joinRoom(data.jobId, userId);
 
       return {
         ok: true,
@@ -249,6 +296,9 @@ export class MessagesGateway
     }
 
     client.leave(`job:${data.jobId}`);
+    const jobs: string[] = client.data.jobs ?? [];
+    client.data.jobs = jobs.filter((j) => j !== data.jobId);
+    this.leaveRoom(data.jobId, client.data.user?.id);
     return { ok: true };
   }
 
