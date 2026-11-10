@@ -51,10 +51,18 @@ A API estará disponível em `http://localhost:3000/api`.
 | Variável | Descrição | Padrão |
 |---|---|---|
 | `DATABASE_URL` | Connection string do PostgreSQL | `postgresql://komanda:komanda123@localhost:5432/komanda_db` |
+| `JWT_SECRET` | Segredo usado para assinar os JWT. **Obrigatório**, mínimo 32 caracteres | — |
+| `PASSWORD_RESET_TOKEN_PEPPER` | Pepper do hash dos tokens de reset de senha. **Obrigatório**, mínimo 32 caracteres | — |
 | `NODE_ENV` | Ambiente da aplicação | `development` |
 | `PORT` | Porta do servidor HTTP | `3000` |
 | `CORS_ORIGIN` | Origem permitida pelo CORS | `*` |
 | `DB_POOL_SIZE` | Máx. de conexões do pool por processo | `10` |
+
+`JWT_SECRET` e `PASSWORD_RESET_TOKEN_PEPPER` não têm valor padrão e o boot falha se estiverem ausentes ou tiverem menos de 32 caracteres. Gere cada um com:
+
+```bash
+openssl rand -base64 48
+```
 
 ## Comandos
 
