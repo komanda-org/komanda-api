@@ -15,9 +15,7 @@ export class RequestPasswordRecoveryUseCase {
     private readonly mailProvider: IMailProvider,
   ) {}
 
-  // simple in-memory cooldown per email (production: use distributed rate limiter)
   private static readonly COOLDOWN_MS = 60_000; // 1 minute
-  private static readonly lastRequestAt = new Map<string, number>();
 
   async execute(dto: RecoverPasswordDto): Promise<void> {
     const user = await this.prisma.user.findFirst({
@@ -25,6 +23,24 @@ export class RequestPasswordRecoveryUseCase {
     });
 
     if (!user) {
+      return;
+    }
+
+    // Cooldown por e-mail: pedidos repetidos dentro da janela são ignorados
+    // (resposta idêntica, para não vazar existência da conta). Fica no banco
+    // em vez de memória para valer entre instâncias.
+    const recentToken = await this.prisma.passwordResetToken.findFirst({
+      where: {
+        userId: user.id,
+        createdAt: {
+          gte: new Date(
+            Date.now() - RequestPasswordRecoveryUseCase.COOLDOWN_MS,
+          ),
+        },
+      },
+    });
+
+    if (recentToken) {
       return;
     }
 

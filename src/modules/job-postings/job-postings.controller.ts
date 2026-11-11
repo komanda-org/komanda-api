@@ -18,6 +18,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
 import { Roles } from 'src/auth/roles.decorator';
@@ -53,6 +54,7 @@ export class JobPostingsController {
   ) {}
 
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   @Roles(Role.RESTAURANTE)
   @ApiOperation({ summary: 'Criar vaga' })
@@ -140,6 +142,7 @@ export class JobPostingsController {
   }
 
   @Post(':id/applications')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   @Roles(Role.PROFISSIONAL)
   @ApiOperation({ summary: 'Candidatar-se a uma vaga' })

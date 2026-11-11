@@ -1,6 +1,6 @@
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { LoginDto } from './dto/login.dto';
@@ -19,9 +19,8 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  @UseGuards(ThrottlerGuard)
   @Throttle({
-    login: {
+    default: {
       limit: () => Number(process.env.AUTH_LOGIN_LIMIT ?? 5),
       ttl: () => Number(process.env.AUTH_LOGIN_TTL_SECONDS ?? 60) * 1000,
     },
@@ -34,6 +33,8 @@ export class AuthController {
   }
 
   @Post('recover-password')
+  // Flood aqui invalida os tokens anteriores e bombardeia o e-mail do usuário.
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @HttpCode(200)
   @ApiOperation({ summary: 'Recuperar senha' })
   @ApiResponse({ status: 200, description: 'Instruções enviadas' })
@@ -47,6 +48,7 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(200)
   @ApiOperation({ summary: 'Resetar senha' })
   @ApiResponse({ status: 200, description: 'Senha alterada com sucesso' })
