@@ -28,6 +28,8 @@ describe('SearchJobsUseCase', () => {
     restaurant: {
       restaurantName: 'Restaurante Exemplo',
       logoUrl: 'https://example.com/logo.png',
+      zipCode: '01001-000',
+      averageRating: 4.5,
     },
     createdAt: now,
   };
@@ -95,7 +97,7 @@ describe('SearchJobsUseCase', () => {
         where: baseWhere,
         skip: 0,
         take: 20,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ urgent: 'desc' }, { createdAt: 'desc' }],
       }),
     );
   });
@@ -113,7 +115,7 @@ describe('SearchJobsUseCase', () => {
     expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: baseWhere,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ urgent: 'desc' }, { createdAt: 'desc' }],
       }),
     );
   });
@@ -224,6 +226,8 @@ describe('SearchJobsUseCase', () => {
       restaurant: {
         restaurantName: 'Restaurante Exemplo',
         logoUrl: 'https://example.com/logo.png',
+        zipCode: '01001-000',
+        averageRating: 4.5,
       },
     });
   });

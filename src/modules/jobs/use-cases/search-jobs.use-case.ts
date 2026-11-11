@@ -57,12 +57,14 @@ export class SearchJobsUseCase {
         where,
         skip,
         take,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ urgent: 'desc' }, { createdAt: 'desc' }],
         include: {
           restaurant: {
             select: {
               restaurantName: true,
               logoUrl: true,
+              zipCode: true,
+              averageRating: true,
             },
           },
         },
@@ -85,6 +87,8 @@ export class SearchJobsUseCase {
         restaurant: {
           restaurantName: job.restaurant.restaurantName,
           logoUrl: job.restaurant.logoUrl,
+          zipCode: job.restaurant.zipCode,
+          averageRating: job.restaurant.averageRating,
         },
         createdAt: job.createdAt,
       })),

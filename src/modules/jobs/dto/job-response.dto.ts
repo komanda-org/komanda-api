@@ -1,28 +1,68 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ContractType, JobStatus } from '@prisma/client';
 
-export interface JobRestaurantDto {
-  restaurantName: string;
-  logoUrl: string | null;
+export class JobRestaurantDto {
+  @ApiProperty()
+  restaurantName!: string;
+
+  @ApiPropertyOptional({ nullable: true })
+  logoUrl!: string | null;
+
+  @ApiProperty()
+  zipCode!: string;
+
+  @ApiPropertyOptional({ nullable: true, type: Number })
+  averageRating!: number | null;
 }
 
-export interface JobResponseDto {
-  id: string;
-  title: string;
-  description: string;
-  requirements: string | null;
-  salary: string | null;
-  contractType: ContractType;
-  shift: string | null;
-  status: JobStatus;
-  urgent: boolean;
-  restaurantId: string;
-  restaurant: JobRestaurantDto;
-  createdAt: Date;
+export class JobResponseDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  title!: string;
+
+  @ApiProperty()
+  description!: string;
+
+  @ApiProperty({ nullable: true })
+  requirements!: string | null;
+
+  @ApiProperty({ nullable: true })
+  salary!: string | null;
+
+  @ApiProperty({ enum: ContractType })
+  contractType!: ContractType;
+
+  @ApiProperty({ nullable: true })
+  shift!: string | null;
+
+  @ApiProperty({ enum: JobStatus })
+  status!: JobStatus;
+
+  @ApiProperty()
+  urgent!: boolean;
+
+  @ApiProperty()
+  restaurantId!: string;
+
+  @ApiProperty({ type: JobRestaurantDto })
+  restaurant!: JobRestaurantDto;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: Date;
 }
 
-export interface ListJobsResponseDto {
-  data: JobResponseDto[];
-  total: number;
-  skip: number;
-  take: number;
+export class ListJobsResponseDto {
+  @ApiProperty({ type: [JobResponseDto] })
+  data!: JobResponseDto[];
+
+  @ApiProperty()
+  total!: number;
+
+  @ApiProperty()
+  skip!: number;
+
+  @ApiProperty()
+  take!: number;
 }
