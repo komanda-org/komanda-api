@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -25,15 +26,19 @@ import { DenunciasModule } from './modules/denuncias/Denuncias.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        errorMessage:
-          'Muitas tentativas de login. Tente novamente em alguns minutos.',
+        errorMessage: 'Muitas tentativas. Tente novamente em alguns minutos.',
+        // O guard global também roda em gateways WebSocket; throttle é só HTTP.
+        skipIf: (context) => context.getType() !== 'http',
         throttlers: [
           {
-            name: 'login',
-            limit: Number(configService.get<number>('AUTH_LOGIN_LIMIT') ?? 5),
+            // Limite padrão para toda a API. Rotas sensíveis (login,
+            // recuperação de senha, cadastros, denúncias) sobrescrevem com
+            // @Throttle e limites bem menores.
+            name: 'default',
+            limit: Number(configService.get<number>('RATE_LIMIT') ?? 20),
             ttl:
               Number(
-                configService.get<number>('AUTH_LOGIN_TTL_SECONDS') ?? 60,
+                configService.get<number>('RATE_LIMIT_TTL_SECONDS') ?? 60,
               ) * 1000,
           },
         ],
@@ -51,6 +56,11 @@ import { DenunciasModule } from './modules/denuncias/Denuncias.module';
     DenunciasModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Throttle global: nenhuma rota fica sem limite. As rotas sensíveis
+    // apertam o limite com @Throttle.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

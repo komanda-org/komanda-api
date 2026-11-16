@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
 import { CreateDenunciaDto } from './dto/create-denuncia.dto';
@@ -21,6 +22,7 @@ export class DenunciasController {
 
   // Sem @Roles: profissional e restaurante podem denunciar (RF10).
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   async create(
     @Body() dto: CreateDenunciaDto,

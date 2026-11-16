@@ -1,4 +1,5 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { RegisterRestaurantUseCase } from './use-cases/register-restaurant.use-case';
@@ -11,6 +12,7 @@ export class RestaurantsController {
   ) {}
 
   @Post()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Cadastrar restaurante' })
   @ApiResponse({ status: 201, description: 'Restaurante criado com sucesso' })

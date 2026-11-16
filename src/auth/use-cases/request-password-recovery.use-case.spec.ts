@@ -14,7 +14,11 @@ describe('RequestPasswordRecoveryUseCase', () => {
   let useCase: RequestPasswordRecoveryUseCase;
   const mockPrisma = {
     user: { findFirst: jest.fn() },
-    passwordResetToken: { create: jest.fn(), updateMany: jest.fn() },
+    passwordResetToken: {
+      create: jest.fn(),
+      updateMany: jest.fn(),
+      findFirst: jest.fn(),
+    },
   };
   const mockMailProvider = {
     sendPasswordRecoveryEmail: jest.fn(),
@@ -26,6 +30,7 @@ describe('RequestPasswordRecoveryUseCase', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockConfigService.getOrThrow.mockReturnValue(PEPPER_FIXTURE);
+    mockPrisma.passwordResetToken.findFirst.mockResolvedValue(null);
     useCase = new RequestPasswordRecoveryUseCase(
       mockPrisma as unknown as PrismaService,
       mockConfigService as unknown as ConfigService,
@@ -40,6 +45,26 @@ describe('RequestPasswordRecoveryUseCase', () => {
       useCase.execute({ email: 'missing@example.com' }),
     ).resolves.toBeUndefined();
 
+    expect(mockPrisma.passwordResetToken.create).not.toHaveBeenCalled();
+    expect(mockMailProvider.sendPasswordRecoveryEmail).not.toHaveBeenCalled();
+  });
+
+  it('should not send another e-mail while the per-email cooldown is active', async () => {
+    mockPrisma.user.findFirst.mockResolvedValue(MOCK_USER);
+    mockPrisma.passwordResetToken.findFirst.mockResolvedValue({
+      id: 'recent-token',
+      createdAt: new Date(),
+    });
+
+    await useCase.execute({ email: MOCK_USER.email });
+
+    expect(mockPrisma.passwordResetToken.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: MOCK_USER.id,
+        createdAt: { gte: expect.any(Date) },
+      },
+    });
+    expect(mockPrisma.passwordResetToken.updateMany).not.toHaveBeenCalled();
     expect(mockPrisma.passwordResetToken.create).not.toHaveBeenCalled();
     expect(mockMailProvider.sendPasswordRecoveryEmail).not.toHaveBeenCalled();
   });
