@@ -11,9 +11,12 @@ import { AuthModule } from '../src/auth/auth.module';
 import { EXPERIENCES_INCLUDE } from '../src/modules/users/professional-profile.mapper';
 import { UsersModule } from '../src/modules/users/users.module';
 
-describe('GET /users/me E2E (perfil do profissional)', () => {
+describe('GET /users/me E2E (perfil do usuário logado)', () => {
   let app: INestApplication;
-  let prisma: { professional: { findFirst: jest.Mock } };
+  let prisma: {
+    professional: { findFirst: jest.Mock };
+    restaurant: { findFirst: jest.Mock };
+  };
   let jwtService: JwtService;
 
   const professional = {
@@ -35,7 +38,10 @@ describe('GET /users/me E2E (perfil do profissional)', () => {
   };
 
   beforeAll(async () => {
-    prisma = { professional: { findFirst: jest.fn() } };
+    prisma = {
+      professional: { findFirst: jest.fn() },
+      restaurant: { findFirst: jest.fn() },
+    };
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
@@ -88,6 +94,7 @@ describe('GET /users/me E2E (perfil do profissional)', () => {
       .expect(200);
 
     expect(response.body).toEqual({
+      role: 'PROFISSIONAL',
       id: 'prof-1',
       fullName: 'Julian Rossi',
       mainRole: 'Chef Executivo',
@@ -124,15 +131,55 @@ describe('GET /users/me E2E (perfil do profissional)', () => {
       .expect(401);
   });
 
-  it('retorna 403 para token de RESTAURANTE', async () => {
-    await request(app.getHttpServer())
+  it('retorna 200 com o perfil do restaurante para token de RESTAURANTE', async () => {
+    prisma.restaurant.findFirst.mockResolvedValue({
+      userId: 'rest-1',
+      restaurantName: 'Cantina Bella Massa',
+      cnpj: '12.345.678/0001-95',
+      cuisineType: 'Italiana',
+      description: 'Massas artesanais e ambiente familiar',
+      address: 'Rua das Flores, 100',
+      phone: '(73) 99999-0000',
+      zipCode: '45820-020',
+      logoUrl: null,
+      averageRating: 4.2,
+      plan: 'FREE',
+      active: true,
+      deletedAt: null,
+      user: { email: 'cantina@komanda.dev' },
+    });
+
+    const response = await request(app.getHttpServer())
       .get('/api/users/me')
       .set(authHeader('rest-1', Role.RESTAURANTE))
-      .expect(403);
+      .expect(200);
 
+    expect(response.body).toEqual({
+      role: 'RESTAURANTE',
+      id: 'rest-1',
+      email: 'cantina@komanda.dev',
+      restaurantName: 'Cantina Bella Massa',
+      cnpj: '12.345.678/0001-95',
+      cuisineType: 'Italiana',
+      description: 'Massas artesanais e ambiente familiar',
+      address: 'Rua das Flores, 100',
+      phone: '(73) 99999-0000',
+      zipCode: '45820-020',
+      logoUrl: null,
+      averageRating: 4.2,
+      plan: 'FREE',
+    });
     expect(prisma.professional.findFirst).not.toHaveBeenCalled();
   });
 
+  it('retorna 404 quando o restaurante do token foi excluído', async () => {
+    prisma.restaurant.findFirst.mockResolvedValue(null);
+
+    await request(app.getHttpServer())
+      .get('/api/users/me')
+      .set(authHeader('rest-excluido', Role.RESTAURANTE))
+      .expect(404);
+  });
   it('retorna 404 quando o profissional do token não existe', async () => {
     prisma.professional.findFirst.mockResolvedValue(null);
 

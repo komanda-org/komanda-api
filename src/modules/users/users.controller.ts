@@ -10,12 +10,13 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiForbiddenResponse,
+  ApiExtraModels,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
+  getSchemaPath,
 } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
@@ -23,7 +24,11 @@ import { AuthGuard } from 'src/auth/auth.guard';
 import type { JwtPayload } from 'src/auth/interfaces/authenticated-request.interface';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
-import { MyProfileResponseDto } from './dto/my-profile-response.dto';
+import {
+  type MeResponseDto,
+  MyProfessionalMeResponseDto,
+  MyRestaurantMeResponseDto,
+} from './dto/my-restaurant-profile-response.dto';
 import { GetMyProfileUseCase } from './use-cases/get-my-profile.use-case';
 import { ReqUser } from './req-user.decorator';
 import {
@@ -45,17 +50,28 @@ export class UsersController {
   @SkipThrottle() // leitura autenticada de tela; ver notifications.controller
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(Role.PROFISSIONAL)
+  @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
   @ApiTags('Users')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Perfil do profissional logado' })
-  @ApiOkResponse({ type: MyProfileResponseDto })
+  @ApiOperation({
+    summary: 'Perfil do usuário logado (profissional ou restaurante)',
+    description:
+      'O formato depende do role do token; o campo `role` indica qual chegou.',
+  })
+  @ApiExtraModels(MyProfessionalMeResponseDto, MyRestaurantMeResponseDto)
+  @ApiOkResponse({
+    schema: {
+      oneOf: [
+        { $ref: getSchemaPath(MyProfessionalMeResponseDto) },
+        { $ref: getSchemaPath(MyRestaurantMeResponseDto) },
+      ],
+    },
+  })
   @ApiUnauthorizedResponse({ description: 'Token ausente ou inválido' })
-  @ApiForbiddenResponse({ description: 'Usuário logado não é profissional' })
-  @ApiNotFoundResponse({ description: 'Cadastro de profissional não existe' })
-  async getMe(@ReqUser() user: JwtPayload): Promise<MyProfileResponseDto> {
-    // O id vem só do token; a rota não aceita id, query nem body.
-    return this.getMyProfile.execute(user.id);
+  @ApiNotFoundResponse({ description: 'Cadastro não existe ou foi excluído' })
+  async getMe(@ReqUser() user: JwtPayload): Promise<MeResponseDto> {
+    // id e role vêm só do token; a rota não aceita id, query nem body.
+    return this.getMyProfile.execute(user);
   }
 
   @Put('me')

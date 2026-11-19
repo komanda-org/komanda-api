@@ -251,6 +251,55 @@ describe('UpdateMyProfileUseCase', () => {
     expect(prisma.professional.update).not.toHaveBeenCalled();
   });
 
+  // null em coluna NOT NULL chegava ao Prisma e virava 500.
+  it.each([
+    [Role.PROFISSIONAL, 'fullName'],
+    [Role.PROFISSIONAL, 'mainRole'],
+    [Role.PROFISSIONAL, 'interestedRoles'],
+    [Role.PROFISSIONAL, 'specialties'],
+    [Role.PROFISSIONAL, 'workModels'],
+    [Role.PROFISSIONAL, 'experiences'],
+    [Role.RESTAURANTE, 'restaurantName'],
+    [Role.RESTAURANTE, 'cuisineType'],
+    [Role.RESTAURANTE, 'description'],
+    [Role.RESTAURANTE, 'address'],
+    [Role.RESTAURANTE, 'phone'],
+  ])('%s: %s = null é 400, não 500', async (role, field) => {
+    await expect(
+      useCase.execute({
+        user: { id: 'user-1', role },
+        payload: { [field]: null },
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.professional.update).not.toHaveBeenCalled();
+    expect(prisma.restaurant.update).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [Role.PROFISSIONAL, 'neighborhood'],
+    [Role.PROFISSIONAL, 'experienceSummary'],
+    [Role.PROFISSIONAL, 'profilePhoto'],
+    [Role.PROFISSIONAL, 'city'],
+    [Role.PROFISSIONAL, 'mobility'],
+    [Role.RESTAURANTE, 'logoUrl'],
+  ])('%s: %s = null continua apagando o campo', async (role, field) => {
+    prisma.professional.update.mockResolvedValue(professionalRow());
+    prisma.restaurant.update.mockResolvedValue({ userId: 'user-1' });
+
+    await useCase.execute({
+      user: { id: 'user-1', role },
+      payload: { [field]: null },
+    });
+
+    const update =
+      role === Role.PROFISSIONAL
+        ? prisma.professional.update
+        : prisma.restaurant.update;
+    const [[args]] = update.mock.calls as [[{ data: Record<string, unknown> }]];
+    expect(args.data[field]).toBeNull();
+  });
+
   it('atualiza perfil de restaurante usando o id e role do token', async () => {
     prisma.restaurant.update.mockResolvedValue({
       userId: 'restaurant-1',

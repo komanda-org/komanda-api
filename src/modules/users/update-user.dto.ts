@@ -22,14 +22,21 @@ import {
 import { CreateProfessionalDto } from 'src/modules/professionals/dto/create-professional.dto';
 import { CreateRestaurantDto } from 'src/modules/restaurants/dto/create-restaurant.dto';
 
+// interestedRoles fica fora: no cadastro ele é @IsOptional (aceita null),
+// mas a coluna é String[] NOT NULL. Está redeclarado abaixo.
 const PROFESSIONAL_PROFILE_FIELDS = [
   'fullName',
   'profilePhoto',
   'mainRole',
-  'interestedRoles',
   'experienceSummary',
   'neighborhood',
 ] as const;
+
+// skipNullProperties: false → campo omitido continua opcional, mas null é
+// validado (e recusado com 400) em vez de chegar ao Prisma e virar 500.
+// Campos que podem ser apagados (bairro, foto, logo...) têm @IsOptional
+// próprio no DTO de cadastro e continuam aceitando null.
+const NULL_IS_NOT_OMITTED = { skipNullProperties: false };
 
 const RESTAURANT_PROFILE_FIELDS = [
   'restaurantName',
@@ -83,12 +90,22 @@ export class ProfessionalExperienceInputDto {
 
 export class UpdateProfessionalProfileDto extends PartialType(
   PickType(CreateProfessionalDto, PROFESSIONAL_PROFILE_FIELDS),
+  NULL_IS_NOT_OMITTED,
 ) {
   @optionalButNotNull()
   @IsZipCode()
   zipCode?: string;
 
-  @IsOptional()
+  @optionalButNotNull()
+  @IsArray({ message: 'Cargos de interesse deve ser uma lista' })
+  @IsString({ each: true, message: 'Cada cargo deve ser uma string' })
+  @MaxLength(50, {
+    each: true,
+    message: 'Cada cargo deve ter no máximo 50 caracteres',
+  })
+  interestedRoles?: string[];
+
+  @optionalButNotNull()
   @IsArray({ message: 'Especialidades deve ser uma lista' })
   @ArrayMaxSize(20, { message: 'No máximo 20 especialidades' })
   @IsString({ each: true, message: 'Cada especialidade deve ser uma string' })
@@ -110,7 +127,7 @@ export class UpdateProfessionalProfileDto extends PartialType(
   @Matches(/^[A-Z]{2}$/, { message: 'Estado deve ser a UF com 2 letras' })
   state?: string | null;
 
-  @IsOptional()
+  @optionalButNotNull()
   @IsArray({ message: 'workModels deve ser uma lista' })
   @ArrayUnique({ message: 'workModels não pode ter valores repetidos' })
   @IsEnum(WorkModel, {
@@ -126,7 +143,7 @@ export class UpdateProfessionalProfileDto extends PartialType(
   mobility?: Mobility | null;
 
   // Substitui a lista inteira: o front manda o estado final das experiências.
-  @IsOptional()
+  @optionalButNotNull()
   @IsArray({ message: 'experiences deve ser uma lista' })
   @ArrayMaxSize(30, { message: 'No máximo 30 experiências' })
   @ValidateNested({ each: true })
@@ -136,6 +153,7 @@ export class UpdateProfessionalProfileDto extends PartialType(
 
 export class UpdateRestaurantProfileDto extends PartialType(
   PickType(CreateRestaurantDto, RESTAURANT_PROFILE_FIELDS),
+  NULL_IS_NOT_OMITTED,
 ) {
   @IsOptionalZipCode()
   zipCode?: string | null;
