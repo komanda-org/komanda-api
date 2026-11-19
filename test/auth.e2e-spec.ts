@@ -132,18 +132,28 @@ describe('Auth E2E', () => {
         .expect(400);
     });
 
-    it('should return 404 when user not found', async () => {
-      const loginDto = {
-        email: 'notfound@example.com',
-        password: 'password',
-      };
-
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
-
-      await request(app.getHttpServer())
+    it('should return the same 401 for unknown email and wrong password', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+      const unknownEmail = await request(app.getHttpServer())
         .post('/api/auth/login')
-        .send(loginDto)
-        .expect(404);
+        .send({ email: 'notfound@example.com', password: 'password' })
+        .expect(401);
+
+      mockPrismaService.user.findUnique.mockResolvedValueOnce({
+        id: '123',
+        email: 'test@example.com',
+        passwordHash: await bcrypt.hash('right-password', 4),
+        deletedAt: null,
+        active: true,
+        role: 'PROFISSIONAL',
+      });
+      const wrongPassword = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: 'test@example.com', password: 'wrong-password' })
+        .expect(401);
+
+      expect(unknownEmail.body).toEqual(wrongPassword.body);
+      expect(unknownEmail.body.message).toBe('E-mail ou senha inválidos');
     });
 
     it('should return 401 with incorrect password', async () => {
