@@ -67,6 +67,40 @@ describe('RegisterProfessionalUseCase', () => {
     expect(resultado.role).toBe('PROFISSIONAL');
   });
 
+  it('deve gravar e checar o email em minúsculas e sem espaços', async () => {
+    const userCreate = jest.fn().mockResolvedValue({ id: 'user-id-123' });
+    const tx = {
+      user: { create: userCreate },
+      professional: {
+        create: jest.fn().mockResolvedValue({
+          userId: 'user-id-123',
+          fullName: dto.fullName,
+          mainRole: dto.mainRole,
+          createdAt: new Date(),
+          user: { email: 'teste@x.com', role: 'PROFISSIONAL' },
+        }),
+      },
+    };
+    const findUnique = jest.fn().mockResolvedValue(null);
+    const prisma = criarMockPrisma({
+      user: { findUnique },
+      $transaction: jest.fn((cb: (tx: unknown) => unknown) =>
+        Promise.resolve(cb(tx)),
+      ),
+    });
+    const useCase = new RegisterProfessionalUseCase(prisma, mockAuth);
+
+    await useCase.execute({ ...dto, email: ' Teste@X.com ' });
+
+    expect(findUnique).toHaveBeenCalledWith({
+      where: { email: 'teste@x.com' },
+    });
+    const [[createArgs]] = userCreate.mock.calls as [
+      [{ data: { email: string } }],
+    ];
+    expect(createArgs.data.email).toBe('teste@x.com');
+  });
+
   it('deve lancar ConflictException quando o email ja existe (pre-checagem)', async () => {
     const prisma = criarMockPrisma({
       user: { findUnique: jest.fn().mockResolvedValue({ id: 'existente' }) },
