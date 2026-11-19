@@ -18,7 +18,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
 import { Roles } from 'src/auth/roles.decorator';
@@ -167,6 +167,7 @@ export class JobPostingsController {
   }
 
   @Get(':id/applications')
+  @SkipThrottle() // leitura autenticada de tela; ver notifications.controller
   @HttpCode(HttpStatus.OK)
   @Roles(Role.RESTAURANTE)
   @ApiOperation({ summary: 'Listar candidatos da vaga' })
@@ -188,6 +189,7 @@ export class JobPostingsController {
   }
 
   @Get('my-chats')
+  @SkipThrottle() // leitura autenticada de tela; ver notifications.controller
   @HttpCode(HttpStatus.OK)
   @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
   @ApiOperation({ summary: 'Listar conversas do usuário (matches aprovados)' })

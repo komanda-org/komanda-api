@@ -12,6 +12,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { Roles } from 'src/auth/roles.decorator';
@@ -24,6 +25,8 @@ import { SearchJobsUseCase } from './use-cases/search-jobs.use-case';
 @ApiBearerAuth()
 @Controller('jobs')
 @UseGuards(AuthGuard, RolesGuard)
+// Só leituras autenticadas de tela (lista e busca); ver notifications.controller
+@SkipThrottle()
 export class JobsController {
   constructor(private readonly searchJobsUseCase: SearchJobsUseCase) {}
 

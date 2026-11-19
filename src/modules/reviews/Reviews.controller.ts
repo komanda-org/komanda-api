@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
 import { RolesGuard } from 'src/auth/roles.guard';
@@ -49,6 +49,7 @@ export class ReviewsController {
   // Sem @Roles: acessível por qualquer usuário autenticado, seja profissional
   // ou restaurante consultando a reputação de outro perfil.
   @Get(':id/reviews')
+  @SkipThrottle() // leitura autenticada de tela; ver notifications.controller
   @HttpCode(HttpStatus.OK)
   async listReceivedReviews(
     @Param('id') id: string,
