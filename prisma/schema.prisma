@@ -26,6 +26,22 @@ enum ContractType {
   ESTAGIO
 }
 
+// Disponibilidade declarada no perfil do profissional. Diferente de
+// ContractType (vaga): inclui TEMPORARIO e não tem ESTAGIO.
+enum WorkModel {
+  CLT
+  PJ
+  FREELANCER
+  TEMPORARIO
+}
+
+enum Mobility {
+  LOCAL
+  REGIONAL
+  NACIONAL
+  INTERNACIONAL
+}
+
 enum JobStatus {
   ABERTA
   PAUSADA
@@ -73,25 +89,47 @@ model User {
 }
 
 model Professional {
-  userId            String  @id @map("user_id") @db.VarChar(36)
+  userId            String                   @id @map("user_id") @db.VarChar(36)
   fullName          String
   profilePhoto      String?
   mainRole          String
   interestedRoles   String[]
-  experienceSummary String? @map("experience_summary") @db.Text
+  experienceSummary String?                  @map("experience_summary") @db.Text
   neighborhood      String?
   zipCode           String?
   averageRating     Float? /// @min 0.0 @max 5.0
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-  deletedAt       DateTime?     @map("deleted_at")
-  active          Boolean       @default(true)
-  user            User          @relation(fields: [userId], references: [id])
-  candidaturas    Candidatura[]
-  avaliacoes Avaliacao[]
+  specialties       String[]                 @default([])
+  city              String?
+  state             String?                  @db.VarChar(2) /// UF
+  workModels        WorkModel[]              @default([]) @map("work_models")
+  mobility          Mobility?
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+  deletedAt         DateTime?                @map("deleted_at")
+  active            Boolean                  @default(true)
+  user              User                     @relation(fields: [userId], references: [id])
+  candidaturas      Candidatura[]
+  avaliacoes        Avaliacao[]
+  experiences       ProfessionalExperience[]
 
   @@index([zipCode])
   @@map("professionals")
+}
+
+model ProfessionalExperience {
+  id             String       @id @default(uuid()) @db.VarChar(36)
+  professionalId String       @map("professional_id") @db.VarChar(36)
+  professional   Professional @relation(fields: [professionalId], references: [userId], onDelete: Cascade)
+  company        String
+  role           String
+  startDate      DateTime     @map("start_date") @db.Date
+  endDate        DateTime?    @map("end_date") @db.Date /// null = emprego atual
+  description    String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@index([professionalId])
+  @@map("professional_experiences")
 }
 
 model PasswordResetToken {
@@ -107,24 +145,24 @@ model PasswordResetToken {
 }
 
 model Restaurant {
-  userId         String    @id @map("user_id") @db.VarChar(36)
+  userId         String      @id @map("user_id") @db.VarChar(36)
   restaurantName String
-  cnpj           String    @unique
-  cuisineType    String    @map("cuisine_type")
+  cnpj           String      @unique
+  cuisineType    String      @map("cuisine_type")
   description    String
   address        String
   phone          String
-  zipCode        String    @map("zip_code")
-  logoUrl        String?   @map("logo_url")
+  zipCode        String      @map("zip_code")
+  logoUrl        String?     @map("logo_url")
   averageRating  Float? /// @min 0.0 @max 5.0
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  deletedAt      DateTime? @map("deleted_at")
-  active         Boolean   @default(true)
-  plan           PlanType  @default(FREE)
-  user           User      @relation(fields: [userId], references: [id])
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  deletedAt      DateTime?   @map("deleted_at")
+  active         Boolean     @default(true)
+  plan           PlanType    @default(FREE)
+  user           User        @relation(fields: [userId], references: [id])
   jobs           Job[]
-  avaliacoes Avaliacao[]
+  avaliacoes     Avaliacao[]
 
   @@map("restaurants")
 }
@@ -206,7 +244,6 @@ model Avaliacao {
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   @@unique([professionalId, restaurantId, jobId, avaliadorRole])
-
   @@index([professionalId])
   @@index([restaurantId])
   @@index([jobId])

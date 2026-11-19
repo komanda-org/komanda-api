@@ -13,6 +13,11 @@ import {
   UpdateProfessionalProfileDto,
   UpdateRestaurantProfileDto,
 } from '../update-user.dto';
+import {
+  EXPERIENCES_INCLUDE,
+  toExperienceCreateInput,
+  toMyProfileResponse,
+} from '../professional-profile.mapper';
 
 interface UpdateMyProfileInput {
   user: JwtPayload;
@@ -31,27 +36,42 @@ export class UpdateMyProfileUseCase {
 
   async execute(input: UpdateMyProfileInput): Promise<UpdatedProfileResponse> {
     if (input.user.role === Role.PROFISSIONAL) {
-      const data = await this.validatePayload(
+      const { experiences, ...fields } = await this.validatePayload(
         UpdateProfessionalProfileDto,
         input.payload,
       );
 
+      for (const experience of experiences ?? []) {
+        if (experience.endDate && experience.endDate < experience.startDate) {
+          throw new BadRequestException(
+            `Experiência em ${experience.company}: endDate não pode ser anterior a startDate`,
+          );
+        }
+      }
+
       try {
         const professional = await this.prisma.professional.update({
           where: { userId: input.user.id },
-          data,
+          data: {
+            ...fields,
+            // Lista enviada = estado final. Apagar e recriar dentro do mesmo
+            // update é atômico: ou troca tudo, ou nada muda.
+            ...(experiences !== undefined && {
+              experiences: {
+                deleteMany: {},
+                create: experiences.map(toExperienceCreateInput),
+              },
+            }),
+          },
+          include: EXPERIENCES_INCLUDE,
         });
 
         return {
           userId: professional.userId,
           role: Role.PROFISSIONAL,
           profile: {
-            fullName: professional.fullName,
-            profilePhoto: professional.profilePhoto,
-            mainRole: professional.mainRole,
+            ...toMyProfileResponse(professional),
             interestedRoles: professional.interestedRoles,
-            experienceSummary: professional.experienceSummary,
-            neighborhood: professional.neighborhood,
             zipCode: professional.zipCode,
           },
         };
