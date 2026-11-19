@@ -87,6 +87,7 @@ describe('GetMyProfileUseCase', () => {
       experienceSummary: null,
       specialties: ['Cozinha francesa', 'Confeitaria'],
       neighborhood: 'Pinheiros',
+      zipCode: '05422-000',
       city: 'São Paulo',
       state: 'SP',
       experiences: [
@@ -138,7 +139,6 @@ describe('GetMyProfileUseCase', () => {
 
     const result = await useCase.execute('professional-1');
 
-    expect(result).not.toHaveProperty('zipCode');
     expect(result).not.toHaveProperty('averageRating');
     expect(result).not.toHaveProperty('userId');
     expect(result).not.toHaveProperty('workModels');

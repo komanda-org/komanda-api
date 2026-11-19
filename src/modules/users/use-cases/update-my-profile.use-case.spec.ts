@@ -151,6 +151,57 @@ describe('UpdateMyProfileUseCase', () => {
     );
   });
 
+  it('aceita trocar o CEP por outro válido', async () => {
+    prisma.professional.update.mockResolvedValue(
+      professionalRow({ zipCode: '20040-000' }),
+    );
+
+    const result = await useCase.execute({
+      user: { id: 'professional-1', role: Role.PROFISSIONAL },
+      payload: { zipCode: '20040-000' },
+    });
+
+    expect(result.profile).toMatchObject({ zipCode: '20040-000' });
+  });
+
+  it.each([null, ''])(
+    'restaurante pode apagar o CEP (itinerante): %p vira null',
+    async (zipCode) => {
+      prisma.restaurant.update.mockResolvedValue({
+        userId: 'restaurant-1',
+        zipCode: null,
+      });
+
+      await useCase.execute({
+        user: { id: 'restaurant-1', role: Role.RESTAURANTE },
+        payload: { zipCode },
+      });
+
+      expect(prisma.restaurant.update).toHaveBeenCalledWith({
+        where: { userId: 'restaurant-1' },
+        data: { zipCode: null },
+      });
+    },
+  );
+
+  it.each([
+    [Role.PROFISSIONAL, null],
+    [Role.PROFISSIONAL, ''],
+    [Role.PROFISSIONAL, '0100-000'],
+    [Role.RESTAURANTE, 'abc'],
+    [Role.RESTAURANTE, '0100-000'],
+  ])('%s não pode gravar CEP inválido (%p)', async (role, zipCode) => {
+    await expect(
+      useCase.execute({
+        user: { id: 'user-1', role },
+        payload: { zipCode },
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(prisma.professional.update).not.toHaveBeenCalled();
+    expect(prisma.restaurant.update).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['UF inválida', { state: 'São Paulo' }],
     ['modelo de trabalho desconhecido', { workModels: ['ESTAGIO'] }],

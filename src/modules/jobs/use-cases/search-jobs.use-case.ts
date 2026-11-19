@@ -18,22 +18,9 @@ export class SearchJobsUseCase {
       status: JobStatus.ABERTA,
     };
 
-    if (query.query && query.query.trim()) {
-      const search = query.query.trim();
-      where.OR = [
-        {
-          title: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
-        {
-          description: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
-      ];
+    const keywords = parseKeywords(query.query);
+    if (keywords.length > 0) {
+      where.id = { in: await this.findJobIdsMatchingAll(keywords) };
     }
 
     if (query.contractType) {
@@ -60,9 +47,15 @@ export class SearchJobsUseCase {
         orderBy: { createdAt: 'desc' },
         include: {
           restaurant: {
+            // Só dados públicos do restaurante. zipCode e address alimentam o
+            // cálculo de distância do front; CNPJ e telefone nunca saem aqui.
             select: {
               restaurantName: true,
               logoUrl: true,
+              cuisineType: true,
+              averageRating: true,
+              address: true,
+              zipCode: true,
             },
           },
         },
@@ -85,6 +78,10 @@ export class SearchJobsUseCase {
         restaurant: {
           restaurantName: job.restaurant.restaurantName,
           logoUrl: job.restaurant.logoUrl,
+          cuisineType: job.restaurant.cuisineType,
+          averageRating: job.restaurant.averageRating,
+          address: job.restaurant.address,
+          zipCode: job.restaurant.zipCode,
         },
         createdAt: job.createdAt,
       })),
@@ -93,4 +90,40 @@ export class SearchJobsUseCase {
       take,
     };
   }
+
+  // Cada palavra precisa aparecer em algum lugar da vaga (título, descrição,
+  // requisitos ou nome do restaurante), em qualquer ordem, ignorando
+  // maiúsculas e acentos: "garcom noite" acha "Garçom" do turno da noite
+  // escrito na descrição. O Prisma não tem unaccent, por isso o SQL aqui;
+  // status, filtros e paginação continuam no findMany.
+  private async findJobIdsMatchingAll(keywords: string[]): Promise<string[]> {
+    const conditions = keywords.map(
+      (word) =>
+        Prisma.sql`unaccent(concat_ws(' ', j.title, j.description, j.requirements, r."restaurantName")) ILIKE unaccent(${`%${escapeLike(word)}%`})`,
+    );
+
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT j.id
+      FROM jobs j
+      JOIN restaurants r ON r.user_id = j.restaurant_id
+      WHERE j.active AND j.deleted_at IS NULL AND j.status = 'ABERTA'
+        AND ${Prisma.join(conditions, ' AND ')}
+    `;
+
+    return rows.map((row) => row.id);
+  }
+}
+
+const MAX_KEYWORDS = 10;
+
+// "  Garçom   noite garçom " -> ["garçom", "noite"]
+export function parseKeywords(raw: string | undefined): string[] {
+  if (!raw) return [];
+  const words = raw.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return [...new Set(words)].slice(0, MAX_KEYWORDS);
+}
+
+// % e _ digitados pelo usuário são texto, não curingas do LIKE.
+function escapeLike(word: string): string {
+  return word.replace(/[\\%_]/g, (char) => `\\${char}`);
 }

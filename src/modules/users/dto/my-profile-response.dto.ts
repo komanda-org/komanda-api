@@ -60,6 +60,15 @@ export class MyProfileResponseDto {
   @ApiProperty({ type: String, nullable: true })
   neighborhood!: string | null;
 
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    example: '01001-000',
+    description:
+      'Obrigatório no cadastro; null só em contas antigas, criadas antes da regra',
+  })
+  zipCode!: string | null;
+
   @ApiProperty({ type: String, nullable: true })
   city!: string | null;
 

@@ -34,6 +34,7 @@ export function toMyProfileResponse(
     experienceSummary: professional.experienceSummary,
     specialties: professional.specialties,
     neighborhood: professional.neighborhood,
+    zipCode: professional.zipCode,
     city: professional.city,
     state: professional.state,
     experiences: professional.experiences.map((experience) => ({

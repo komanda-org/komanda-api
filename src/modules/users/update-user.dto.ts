@@ -12,8 +12,13 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import {
+  IsOptionalZipCode,
+  IsZipCode,
+} from 'src/common/validators/is-zip-code';
 import { CreateProfessionalDto } from 'src/modules/professionals/dto/create-professional.dto';
 import { CreateRestaurantDto } from 'src/modules/restaurants/dto/create-restaurant.dto';
 
@@ -24,7 +29,6 @@ const PROFESSIONAL_PROFILE_FIELDS = [
   'interestedRoles',
   'experienceSummary',
   'neighborhood',
-  'zipCode',
 ] as const;
 
 const RESTAURANT_PROFILE_FIELDS = [
@@ -33,9 +37,14 @@ const RESTAURANT_PROFILE_FIELDS = [
   'description',
   'address',
   'phone',
-  'zipCode',
   'logoUrl',
 ] as const;
+
+// zipCode fica fora do PartialType de propósito: o @IsOptional dele aceita
+// null. O CEP do profissional é obrigatório: no PUT pode ser omitido, nunca
+// apagado. O do restaurante pode ser apagado (restaurante só de eventos).
+const optionalButNotNull = () =>
+  ValidateIf((_object: unknown, value: unknown) => value !== undefined);
 
 // "YYYY-MM-DD" estrito: sem hora, para a coluna DATE não sofrer fuso.
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
@@ -75,6 +84,10 @@ export class ProfessionalExperienceInputDto {
 export class UpdateProfessionalProfileDto extends PartialType(
   PickType(CreateProfessionalDto, PROFESSIONAL_PROFILE_FIELDS),
 ) {
+  @optionalButNotNull()
+  @IsZipCode()
+  zipCode?: string;
+
   @IsOptional()
   @IsArray({ message: 'Especialidades deve ser uma lista' })
   @ArrayMaxSize(20, { message: 'No máximo 20 especialidades' })
@@ -123,7 +136,10 @@ export class UpdateProfessionalProfileDto extends PartialType(
 
 export class UpdateRestaurantProfileDto extends PartialType(
   PickType(CreateRestaurantDto, RESTAURANT_PROFILE_FIELDS),
-) {}
+) {
+  @IsOptionalZipCode()
+  zipCode?: string | null;
+}
 
 export type UpdateProfileDto =
   | UpdateProfessionalProfileDto

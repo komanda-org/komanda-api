@@ -14,9 +14,15 @@ import { ContractType } from '@prisma/client';
 import { normalizeShift } from './normalize-shift';
 
 export class SearchJobsQueryDto {
-  @ApiProperty({ required: false })
+  @ApiProperty({
+    required: false,
+    example: 'garcom noite',
+    description:
+      'Palavras-chave separadas por espaço. A vaga precisa conter todas, em qualquer ordem, no título, descrição, requisitos ou nome do restaurante. Ignora maiúsculas e acentos.',
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(200, { message: 'query não pode passar de 200 caracteres' })
   query?: string;
 
   @ApiProperty({ required: false, enum: ContractType })

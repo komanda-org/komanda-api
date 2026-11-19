@@ -383,6 +383,24 @@ describe('CreateJobPostingUseCase', () => {
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('job-1'));
     });
 
+    it('restaurante sem CEP (itinerante): cria a vaga sem notificar e sem alerta', async () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+      jest.spyOn(Logger.prototype, 'log').mockImplementation();
+      prisma.restaurant.findUnique.mockResolvedValue({
+        ...restauranteAtivo,
+        zipCode: null,
+      });
+      prisma.job.create.mockResolvedValue(vagaCriada);
+
+      const result = await useCase.execute(input);
+
+      expect(result.id).toBe('job-1');
+      expect(prisma.professional.findMany).not.toHaveBeenCalled();
+      expect(notificacaoService.createMany).not.toHaveBeenCalled();
+      // Sem CEP é um caso válido, não um dado quebrado: não vira warning.
+      expect(warn).not.toHaveBeenCalled();
+    });
+
     it('falha no provider não impede criar a vaga e é logada com contexto', async () => {
       const logError = jest
         .spyOn(Logger.prototype, 'error')

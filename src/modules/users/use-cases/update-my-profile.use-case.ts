@@ -72,7 +72,6 @@ export class UpdateMyProfileUseCase {
           profile: {
             ...toMyProfileResponse(professional),
             interestedRoles: professional.interestedRoles,
-            zipCode: professional.zipCode,
           },
         };
       } catch (error: any) {

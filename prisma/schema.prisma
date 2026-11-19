@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  extensions = [pg_trgm]
+  extensions = [pg_trgm, unaccent]
 }
 
 enum PlanType {
@@ -152,7 +152,8 @@ model Restaurant {
   description    String
   address        String
   phone          String
-  zipCode        String      @map("zip_code")
+  /// null = restaurante itinerante (só eventos), sem endereço fixo
+  zipCode        String?     @map("zip_code")
   logoUrl        String?     @map("logo_url")
   averageRating  Float? /// @min 0.0 @max 5.0
   createdAt      DateTime    @default(now()) @map("created_at")

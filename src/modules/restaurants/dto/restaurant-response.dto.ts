@@ -10,7 +10,7 @@ export interface RestaurantResponseDto {
   cuisineType: string;
   description: string;
   address: string;
-  zipCode: string;
+  zipCode: string | null;
   logoUrl?: string;
   createdAt: Date;
 }

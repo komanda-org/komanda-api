@@ -95,6 +95,7 @@ describe('GET /users/me E2E (perfil do profissional)', () => {
       experienceSummary: null,
       specialties: [],
       neighborhood: 'Pinheiros',
+      zipCode: '05422-000',
       city: null,
       state: null,
       experiences: [],
