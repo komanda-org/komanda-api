@@ -3,6 +3,7 @@ import { JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SearchJobsQueryDto } from '../dto/search-jobs-query.dto';
 import { ListJobsResponseDto } from '../dto/job-response.dto';
+import { PUBLIC_RESTAURANT_SELECT, toJobResponse } from '../job.mapper';
 
 @Injectable()
 export class SearchJobsUseCase {
@@ -45,46 +46,13 @@ export class SearchJobsUseCase {
         skip,
         take,
         orderBy: { createdAt: 'desc' },
-        include: {
-          restaurant: {
-            // Só dados públicos do restaurante. zipCode e address alimentam o
-            // cálculo de distância do front; CNPJ e telefone nunca saem aqui.
-            select: {
-              restaurantName: true,
-              logoUrl: true,
-              cuisineType: true,
-              averageRating: true,
-              address: true,
-              zipCode: true,
-            },
-          },
-        },
+        include: { restaurant: { select: PUBLIC_RESTAURANT_SELECT } },
       }),
       this.prisma.job.count({ where }),
     ]);
 
     return {
-      data: jobs.map((job) => ({
-        id: job.id,
-        title: job.title,
-        description: job.description,
-        requirements: job.requirements,
-        salary: job.salary ? job.salary.toString() : null,
-        contractType: job.contractType,
-        shift: job.shift,
-        status: job.status,
-        urgent: job.urgent,
-        restaurantId: job.restaurantId,
-        restaurant: {
-          restaurantName: job.restaurant.restaurantName,
-          logoUrl: job.restaurant.logoUrl,
-          cuisineType: job.restaurant.cuisineType,
-          averageRating: job.restaurant.averageRating,
-          address: job.restaurant.address,
-          zipCode: job.restaurant.zipCode,
-        },
-        createdAt: job.createdAt,
-      })),
+      data: jobs.map(toJobResponse),
       total,
       skip,
       take,

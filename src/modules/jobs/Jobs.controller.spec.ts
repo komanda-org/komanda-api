@@ -3,6 +3,7 @@ import { ContractType, JobStatus } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { JobsController } from './Jobs.controller';
+import { GetJobByIdUseCase } from './use-cases/get-job-by-id.use-case';
 import { SearchJobsUseCase } from './use-cases/search-jobs.use-case';
 
 describe('JobsController', () => {
@@ -43,6 +44,10 @@ describe('JobsController', () => {
           useValue: {
             execute: jest.fn(),
           },
+        },
+        {
+          provide: GetJobByIdUseCase,
+          useValue: { execute: jest.fn() },
         },
       ],
     })
