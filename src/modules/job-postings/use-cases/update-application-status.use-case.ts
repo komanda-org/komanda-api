@@ -4,7 +4,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { Candidatura, CandidaturaStatus } from '@prisma/client';
+import { Candidatura, CandidaturaStatus, JobStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 interface UpdateApplicationStatusInput {
@@ -43,6 +43,14 @@ export class UpdateApplicationStatusUseCase {
     if (candidatura.job.restaurantId !== input.restaurantId) {
       throw new ForbiddenException(
         'Você não tem permissão para alterar esta candidatura',
+      );
+    }
+
+    // Depois do 403: restaurante alheio não descobre o status da vaga.
+    // Encerrar a vaga já recusou as pendentes; o resultado fica congelado.
+    if (candidatura.job.status === JobStatus.ENCERRADA) {
+      throw new UnprocessableEntityException(
+        'Não é possível alterar candidaturas de uma vaga encerrada',
       );
     }
 

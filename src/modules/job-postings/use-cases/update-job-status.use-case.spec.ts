@@ -4,7 +4,12 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { ContractType, JobStatus, Prisma } from '@prisma/client';
+import {
+  CandidaturaStatus,
+  ContractType,
+  JobStatus,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateJobStatusUseCase } from './update-job-status.use-case';
 
@@ -13,6 +18,13 @@ const createMockPrisma = () => ({
     findUnique: jest.fn(),
     update: jest.fn(),
   },
+  candidatura: {
+    updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+  },
+  // Forma em lista: resolve as operações na ordem, como o Prisma.
+  $transaction: jest.fn((operations: Promise<unknown>[]) =>
+    Promise.all(operations),
+  ),
 });
 
 type MockPrisma = ReturnType<typeof createMockPrisma>;
@@ -96,6 +108,54 @@ describe('UpdateJobStatusUseCase', () => {
           closedAt: expect.any(Date) as unknown,
         },
       }),
+    );
+  });
+
+  it('ao encerrar, recusa as candidaturas pendentes na mesma transação', async () => {
+    prisma.job.findUnique.mockResolvedValue(
+      vagaDoRestaurante(JobStatus.ABERTA),
+    );
+    prisma.job.update.mockResolvedValue(vagaGravada(JobStatus.ENCERRADA));
+    prisma.candidatura.updateMany.mockResolvedValue({ count: 3 });
+
+    const result = await executar(JobStatus.ENCERRADA);
+
+    expect(prisma.candidatura.updateMany).toHaveBeenCalledWith({
+      where: { jobId: VAGA_ID, status: CandidaturaStatus.PENDENTE },
+      data: { status: CandidaturaStatus.REJEITADA },
+    });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe(JobStatus.ENCERRADA);
+  });
+
+  it.each([JobStatus.PAUSADA, JobStatus.ABERTA])(
+    'ao mudar para %s, não mexe nas candidaturas',
+    async (status) => {
+      const atual =
+        status === JobStatus.PAUSADA ? JobStatus.ABERTA : JobStatus.PAUSADA;
+      prisma.job.findUnique.mockResolvedValue(vagaDoRestaurante(atual));
+      prisma.job.update.mockResolvedValue(vagaGravada(status));
+
+      await executar(status);
+
+      expect(prisma.candidatura.updateMany).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it('409 ao encerrar não recusa ninguém (transação desfeita)', async () => {
+    prisma.job.findUnique.mockResolvedValue(
+      vagaDoRestaurante(JobStatus.ABERTA),
+    );
+    prisma.job.update.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Record not found', {
+        code: 'P2025',
+        clientVersion: 'test',
+      }),
+    );
+
+    await expect(executar(JobStatus.ENCERRADA)).rejects.toBeInstanceOf(
+      ConflictException,
     );
   });
 

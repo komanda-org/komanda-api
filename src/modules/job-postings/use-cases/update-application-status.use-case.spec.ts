@@ -3,7 +3,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { CandidaturaStatus } from '@prisma/client';
+import { CandidaturaStatus, JobStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateApplicationStatusUseCase } from './update-application-status.use-case';
 
@@ -31,7 +31,11 @@ describe('UpdateApplicationStatusUseCase', () => {
     status: CandidaturaStatus.PENDENTE,
     createdAt: new Date('2026-07-10T12:00:00Z'),
     updatedAt: new Date('2026-07-10T12:00:00Z'),
-    job: { restaurantId: RESTAURANTE_ID, deletedAt: null },
+    job: {
+      restaurantId: RESTAURANTE_ID,
+      deletedAt: null,
+      status: JobStatus.ABERTA,
+    },
   };
 
   beforeEach(() => {
@@ -39,6 +43,50 @@ describe('UpdateApplicationStatusUseCase', () => {
     useCase = new UpdateApplicationStatusUseCase(
       prisma as unknown as PrismaService,
     );
+  });
+
+  it.each([CandidaturaStatus.APROVADA, CandidaturaStatus.REJEITADA])(
+    'lança 422 ao decidir (%s) candidatura de vaga encerrada',
+    async (status) => {
+      prisma.candidatura.findUnique.mockResolvedValue({
+        ...candidaturaPendente,
+        job: { ...candidaturaPendente.job, status: JobStatus.ENCERRADA },
+      });
+
+      await expect(
+        useCase.execute({
+          jobId: VAGA_ID,
+          applicationId: CANDIDATURA_ID,
+          restaurantId: RESTAURANTE_ID,
+          status,
+        }),
+      ).rejects.toThrow(
+        new UnprocessableEntityException(
+          'Não é possível alterar candidaturas de uma vaga encerrada',
+        ),
+      );
+      expect(prisma.candidatura.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('vaga encerrada de outro restaurante continua dando 403 (não vaza o status)', async () => {
+    prisma.candidatura.findUnique.mockResolvedValue({
+      ...candidaturaPendente,
+      job: {
+        ...candidaturaPendente.job,
+        restaurantId: 'outro-restaurante',
+        status: JobStatus.ENCERRADA,
+      },
+    });
+
+    await expect(
+      useCase.execute({
+        jobId: VAGA_ID,
+        applicationId: CANDIDATURA_ID,
+        restaurantId: RESTAURANTE_ID,
+        status: CandidaturaStatus.APROVADA,
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('atualiza o status da candidatura quando o restaurante é o dono da vaga', async () => {
