@@ -8,7 +8,10 @@ import {
   JobShift,
 } from '@prisma/client';
 import type { PrismaService } from 'src/prisma/prisma.service';
-import { PUBLIC_RESTAURANT_SELECT } from '../job.mapper';
+import {
+  PUBLIC_RESTAURANT_SELECT,
+  VISIBLE_RESTAURANT_WHERE,
+} from '../job.mapper';
 import { GetJobByIdUseCase } from './get-job-by-id.use-case';
 
 const PROF = { id: 'prof-1', role: Role.PROFISSIONAL };
@@ -69,7 +72,7 @@ describe('GetJobByIdUseCase', () => {
         id: 'job-1',
         active: true,
         deletedAt: null,
-        restaurant: { deletedAt: null, user: { deletedAt: null } },
+        restaurant: VISIBLE_RESTAURANT_WHERE,
       },
       include: {
         restaurant: { select: PUBLIC_RESTAURANT_SELECT },

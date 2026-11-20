@@ -12,6 +12,14 @@ export const PUBLIC_RESTAURANT_SELECT = {
   zipCode: true,
 } satisfies Prisma.RestaurantSelect;
 
+// Vaga só aparece (lista, busca, detalhe) e só aceita candidatura se o dono
+// existe. A exclusão de conta é soft-delete no User, então ele também entra.
+export const VISIBLE_RESTAURANT_WHERE = {
+  active: true,
+  deletedAt: null,
+  user: { active: true, deletedAt: null },
+} satisfies Prisma.RestaurantWhereInput;
+
 export type JobWithPublicRestaurant = Job & {
   restaurant: Prisma.RestaurantGetPayload<{
     select: typeof PUBLIC_RESTAURANT_SELECT;

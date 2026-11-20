@@ -7,6 +7,7 @@ import request from 'supertest';
 import { Role } from '@prisma/client';
 import { envValidationSchema } from '../src/config/env.validation';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { activeAccountsLookup } from './support/active-accounts';
 import { AuthModule } from '../src/auth/auth.module';
 import { RestaurantsModule } from '../src/modules/restaurants/Restaurants.module';
 
@@ -63,6 +64,10 @@ describe('GET /restaurants/:id E2E (perfil público do restaurante)', () => {
 
     app = moduleFixture.createNestApplication();
     jwtService = moduleFixture.get<JwtService>(JwtService);
+    // O AuthGuard confere a conta no banco (ver test/support/active-accounts).
+    Object.assign(prisma, {
+      user: { findUnique: activeAccountsLookup(jwtService).findUnique },
+    });
     app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({

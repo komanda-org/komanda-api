@@ -7,6 +7,7 @@ import request from 'supertest';
 import { Prisma, Role } from '@prisma/client';
 import { envValidationSchema } from '../src/config/env.validation';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { activeAccountsLookup } from './support/active-accounts';
 import { AuthModule } from '../src/auth/auth.module';
 import { JobsModule } from '../src/modules/jobs/Jobs.module';
 
@@ -16,6 +17,7 @@ describe('GET /jobs/:id E2E (detalhe da vaga)', () => {
     job: { findFirst: jest.Mock; findMany: jest.Mock; count: jest.Mock };
   };
   let jwtService: JwtService;
+  let accounts: ReturnType<typeof activeAccountsLookup>;
 
   const JOB_ID = '3b6f7c2a-1d4e-4a5b-8c9d-0e1f2a3b4c5d';
 
@@ -66,6 +68,9 @@ describe('GET /jobs/:id E2E (detalhe da vaga)', () => {
 
     app = moduleFixture.createNestApplication();
     jwtService = moduleFixture.get<JwtService>(JwtService);
+    // O AuthGuard confere a conta no banco (ver test/support/active-accounts).
+    accounts = activeAccountsLookup(jwtService);
+    Object.assign(prisma, { user: { findUnique: accounts.findUnique } });
     app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
@@ -120,6 +125,21 @@ describe('GET /jobs/:id E2E (detalhe da vaga)', () => {
       hasApplied: false,
       application: null,
     });
+  });
+
+  it('retorna 401 com token válido de conta excluída (perde o acesso na hora)', async () => {
+    const header = authHeader('prof-excluido', Role.PROFISSIONAL);
+    accounts.excluded.add('prof-excluido');
+
+    const response = await request(app.getHttpServer())
+      .get(`/api/jobs/${JOB_ID}`)
+      .set(header)
+      .expect(401);
+
+    expect(response.body).toMatchObject({
+      message: 'Sessão encerrada: a conta foi excluída ou desativada',
+    });
+    expect(prisma.job.findFirst).not.toHaveBeenCalled();
   });
 
   it('retorna 400 quando o id não é UUID', async () => {

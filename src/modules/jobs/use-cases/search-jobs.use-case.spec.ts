@@ -1,6 +1,7 @@
 import { ContractType, JobStatus, Prisma, JobShift } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { parseKeywords, SearchJobsUseCase } from './search-jobs.use-case';
+import { VISIBLE_RESTAURANT_WHERE } from '../job.mapper';
 import { SearchJobsQueryDto } from '../dto/search-jobs-query.dto';
 
 // Mock tipado no lugar de `any`: só os métodos do Prisma que o use case usa.
@@ -54,6 +55,8 @@ describe('SearchJobsUseCase', () => {
     active: true,
     deletedAt: null,
     status: JobStatus.ABERTA,
+    // Vaga de restaurante excluído não aparece no feed.
+    restaurant: VISIBLE_RESTAURANT_WHERE,
   };
 
   beforeEach(() => {

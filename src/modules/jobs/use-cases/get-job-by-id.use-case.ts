@@ -3,7 +3,11 @@ import { JobStatus, Role } from '@prisma/client';
 import type { JwtPayload } from 'src/auth/interfaces/authenticated-request.interface';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { JobDetailResponseDto } from '../dto/job-detail-response.dto';
-import { PUBLIC_RESTAURANT_SELECT, toJobResponse } from '../job.mapper';
+import {
+  PUBLIC_RESTAURANT_SELECT,
+  VISIBLE_RESTAURANT_WHERE,
+  toJobResponse,
+} from '../job.mapper';
 
 @Injectable()
 export class GetJobByIdUseCase {
@@ -21,8 +25,7 @@ export class GetJobByIdUseCase {
         id: jobId,
         active: true,
         deletedAt: null,
-        // A exclusão de conta é soft-delete no User: vaga de dono excluído some.
-        restaurant: { deletedAt: null, user: { deletedAt: null } },
+        restaurant: VISIBLE_RESTAURANT_WHERE,
       },
       include: {
         restaurant: { select: PUBLIC_RESTAURANT_SELECT },

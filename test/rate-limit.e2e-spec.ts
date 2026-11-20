@@ -11,6 +11,7 @@ import { envValidationSchema } from '../src/config/env.validation';
 import { JobsModule } from '../src/modules/jobs/Jobs.module';
 import { NotificationsModule } from '../src/modules/notifications/notifications.module';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { activeAccountsLookup } from './support/active-accounts';
 
 // Limite global baixo de propósito: as leituras de tela não podem receber 429
 // (o front recarrega e faz polling), mas o resto continua limitado.
@@ -57,6 +58,10 @@ describe('Rate limit global x leituras de tela (E2E)', () => {
 
     app = moduleFixture.createNestApplication();
     jwtService = moduleFixture.get<JwtService>(JwtService);
+    // O AuthGuard confere a conta no banco (ver test/support/active-accounts).
+    Object.assign(prisma, {
+      user: { findUnique: activeAccountsLookup(jwtService).findUnique },
+    });
     app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({

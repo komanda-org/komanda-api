@@ -3,7 +3,11 @@ import { JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { SearchJobsQueryDto } from '../dto/search-jobs-query.dto';
 import { ListJobsResponseDto } from '../dto/job-response.dto';
-import { PUBLIC_RESTAURANT_SELECT, toJobResponse } from '../job.mapper';
+import {
+  PUBLIC_RESTAURANT_SELECT,
+  VISIBLE_RESTAURANT_WHERE,
+  toJobResponse,
+} from '../job.mapper';
 
 @Injectable()
 export class SearchJobsUseCase {
@@ -17,6 +21,7 @@ export class SearchJobsUseCase {
       active: true,
       deletedAt: null,
       status: JobStatus.ABERTA,
+      restaurant: VISIBLE_RESTAURANT_WHERE,
     };
 
     const keywords = parseKeywords(query.query);

@@ -7,6 +7,7 @@ import request from 'supertest';
 import { Role } from '@prisma/client';
 import { envValidationSchema } from '../src/config/env.validation';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { activeAccountsLookup } from './support/active-accounts';
 import { AuthModule } from '../src/auth/auth.module';
 import { EXPERIENCES_INCLUDE } from '../src/modules/users/professional-profile.mapper';
 import { UsersModule } from '../src/modules/users/users.module';
@@ -62,6 +63,10 @@ describe('GET /users/me E2E (perfil do usuário logado)', () => {
 
     app = moduleFixture.createNestApplication();
     jwtService = moduleFixture.get<JwtService>(JwtService);
+    // O AuthGuard confere a conta no banco (ver test/support/active-accounts).
+    Object.assign(prisma, {
+      user: { findUnique: activeAccountsLookup(jwtService).findUnique },
+    });
     app.setGlobalPrefix('api');
     app.useGlobalPipes(
       new ValidationPipe({
