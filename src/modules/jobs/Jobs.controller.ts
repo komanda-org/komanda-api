@@ -16,6 +16,7 @@ import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { RolesGuard } from 'src/auth/roles.guard';
+import { ListJobsResponseDto } from './dto/job-response.dto';
 import { ListJobsQueryDto } from './dto/list-jobs-query.dto';
 import { SearchJobsQueryDto } from './dto/search-jobs-query.dto';
 import { SearchJobsUseCase } from './use-cases/search-jobs.use-case';
@@ -31,8 +32,14 @@ export class JobsController {
   @Roles(Role.PROFISSIONAL)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Listar vagas disponíveis' })
-  @ApiResponse({ status: 200, description: 'Lista de vagas' })
-  async listJobs(@Query() query: ListJobsQueryDto) {
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de vagas',
+    type: ListJobsResponseDto,
+  })
+  async listJobs(
+    @Query() query: ListJobsQueryDto,
+  ): Promise<ListJobsResponseDto> {
     return await this.searchJobsUseCase.execute({
       shift: query.shift,
       skip: query.skip,
@@ -47,8 +54,14 @@ export class JobsController {
     summary:
       'Pesquisar vagas por termo, tipo de contrato, turno e salário mínimo',
   })
-  @ApiResponse({ status: 200, description: 'Lista filtrada de vagas' })
-  async searchJobs(@Query() query: SearchJobsQueryDto) {
+  @ApiResponse({
+    status: 200,
+    description: 'Lista filtrada de vagas',
+    type: ListJobsResponseDto,
+  })
+  async searchJobs(
+    @Query() query: SearchJobsQueryDto,
+  ): Promise<ListJobsResponseDto> {
     return await this.searchJobsUseCase.execute(query);
   }
 }
