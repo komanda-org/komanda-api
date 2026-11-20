@@ -9,8 +9,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiExtraModels,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -38,6 +40,7 @@ import {
 import { DeleteAccountUseCase } from './use-cases/DeleteAccountUseCase';
 import type { UpdateProfileDto } from './update-user.dto';
 
+@ApiTags('Users')
 @Controller('users')
 export class UsersController {
   constructor(
@@ -51,7 +54,6 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
-  @ApiTags('Users')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Perfil do usuário logado (profissional ou restaurante)',
@@ -77,6 +79,15 @@ export class UsersController {
   @Put('me')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Editar meu perfil (profissional ou restaurante)',
+    description:
+      'Só os campos enviados mudam. O formato aceito depende do role do token.',
+  })
+  @ApiOkResponse({ description: 'Perfil atualizado' })
+  @ApiBadRequestResponse({ description: 'Campo inválido ou não permitido' })
+  @ApiUnauthorizedResponse({ description: 'Token ausente ou inválido' })
   async updateMe(
     @ReqUser() user: JwtPayload,
     @Body() updateProfileDto: UpdateProfileDto,
@@ -90,6 +101,13 @@ export class UsersController {
   @Delete('me')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Excluir minha conta',
+    description: 'A conta perde o acesso na hora e some das buscas.',
+  })
+  @ApiNoContentResponse({ description: 'Conta excluída' })
+  @ApiNotFoundResponse({ description: 'Conta já excluída' })
   async deleteAccount(@ReqUser() user: JwtPayload): Promise<void> {
     await this.deleteAccountUseCase.execute(user.id);
   }
