@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CandidaturaStatus, Role } from '@prisma/client';
+import { CandidaturaStatus, Prisma, Role } from '@prisma/client';
+import { VISIBLE_RESTAURANT_WHERE } from 'src/modules/jobs/job.mapper';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 interface ListUserChatsInput {
@@ -9,6 +10,8 @@ interface ListUserChatsInput {
 
 interface ChatListItem {
   jobId: string;
+  /** Conversa = vaga + profissional: com 2 aprovados, a vaga tem 2 conversas. */
+  professionalId: string;
   jobTitle: string;
   otherPartyName: string;
   otherPartyPhoto: string | null;
@@ -18,7 +21,19 @@ interface ChatListItem {
   unreadCount: number;
 }
 
-type LastMessage = { content: string | null; createdAt: Date | null };
+type LastMessage = { content: string; createdAt: Date };
+
+// Vaga ainda acessível no chat (mesmo filtro do assert-chat-access).
+const LIVE_JOB_WHERE = { active: true, deletedAt: null } as const;
+
+const ACTIVE_PROFESSIONAL_WHERE: Prisma.ProfessionalWhereInput = {
+  active: true,
+  deletedAt: null,
+  user: { active: true, deletedAt: null },
+};
+
+const conversationKey = (jobId: string, professionalId: string) =>
+  `${jobId}:${professionalId}`;
 
 @Injectable()
 export class ListUserChatsUseCase {
@@ -27,141 +42,129 @@ export class ListUserChatsUseCase {
   async execute(input: ListUserChatsInput): Promise<ChatListItem[]> {
     const { userId, userRole } = input;
 
-    if (userRole === Role.RESTAURANTE) {
-      return this.listRestaurantChats(userId);
-    }
+    const chats =
+      userRole === Role.RESTAURANTE
+        ? await this.listRestaurantChats(userId)
+        : await this.listProfessionalChats(userId);
 
-    return this.listProfessionalChats(userId);
+    // Conversa com mensagem mais recente primeiro; sem mensagem vai para o fim.
+    return chats.sort(
+      (a, b) =>
+        (b.lastMessageTime?.getTime() ?? -Infinity) -
+        (a.lastMessageTime?.getTime() ?? -Infinity),
+    );
   }
 
-  private async listRestaurantChats(restaurantId: string): Promise<ChatListItem[]> {
-    // Buscar vagas do restaurante que têm pelo menos uma candidatura APROVADA
-    const jobs = await this.prisma.job.findMany({
+  private async listRestaurantChats(
+    restaurantId: string,
+  ): Promise<ChatListItem[]> {
+    // Uma conversa por candidatura APROVADA em vaga do restaurante, ignorando
+    // profissionais com conta excluída ou inativa.
+    const candidaturas = await this.prisma.candidatura.findMany({
       where: {
-        restaurantId,
-        candidaturas: {
-          some: {
-            status: CandidaturaStatus.APROVADA,
-          },
-        },
+        status: CandidaturaStatus.APROVADA,
+        job: { restaurantId, ...LIVE_JOB_WHERE },
+        professional: ACTIVE_PROFESSIONAL_WHERE,
       },
       select: {
-        id: true,
-        title: true,
-        candidaturas: {
-          where: { status: CandidaturaStatus.APROVADA },
-          select: {
-            professional: {
-              select: {
-                fullName: true,
-                profilePhoto: true,
-              },
-            },
-          },
-        },
+        professionalId: true,
+        job: { select: { id: true, title: true } },
+        professional: { select: { fullName: true, profilePhoto: true } },
       },
     });
 
-    const lastMessageByJob = await this.lastMessagesByJob(
-      jobs.map((job) => job.id),
-    );
+    const lastMessages = await this.lastMessagesByConversation({
+      job: { restaurantId },
+    });
 
-    const chats: ChatListItem[] = [];
-
-    for (const job of jobs) {
-      const lastMessage = lastMessageByJob[job.id];
-      // Para cada candidatura aprovada, criar uma entrada de chat
-      for (const candidatura of job.candidaturas) {
-        // ponytail: unreadCount hardcoded em 0 (sem tabela de leitura por usuário).
-        // Upgrade: contar mensagens com createdAt > última leitura do usuário no job.
-        const unreadCount = 0;
-
-        chats.push({
-          jobId: job.id,
-          jobTitle: job.title,
-          otherPartyName: candidatura.professional.fullName,
-          otherPartyPhoto: candidatura.professional.profilePhoto ?? null,
-          otherPartyRole: Role.PROFISSIONAL,
-          lastMessageContent: lastMessage?.content ?? null,
-          lastMessageTime: lastMessage?.createdAt ?? null,
-          unreadCount,
-        });
-      }
-    }
-
-    return chats;
+    return candidaturas.map((cand) => {
+      const last =
+        lastMessages[conversationKey(cand.job.id, cand.professionalId)];
+      return {
+        jobId: cand.job.id,
+        professionalId: cand.professionalId,
+        jobTitle: cand.job.title,
+        otherPartyName: cand.professional.fullName,
+        otherPartyPhoto: cand.professional.profilePhoto ?? null,
+        otherPartyRole: Role.PROFISSIONAL,
+        lastMessageContent: last?.content ?? null,
+        lastMessageTime: last?.createdAt ?? null,
+        // ponytail: unreadCount fixo em 0 (sem tabela de leitura por usuário).
+        // Upgrade: contar mensagens com createdAt > última leitura do usuário na conversa.
+        unreadCount: 0,
+      };
+    });
   }
 
-  private async listProfessionalChats(professionalId: string): Promise<ChatListItem[]> {
-    // Buscar candidaturas APROVADAS do profissional
+  private async listProfessionalChats(
+    professionalId: string,
+  ): Promise<ChatListItem[]> {
+    // Candidaturas APROVADAS do profissional em vagas de restaurante ativo.
     const candidaturas = await this.prisma.candidatura.findMany({
       where: {
         professionalId,
         status: CandidaturaStatus.APROVADA,
+        job: { ...LIVE_JOB_WHERE, restaurant: VISIBLE_RESTAURANT_WHERE },
       },
       select: {
         job: {
           select: {
             id: true,
             title: true,
-            restaurant: {
-              select: {
-                restaurantName: true,
-                logoUrl: true,
-              },
-            },
+            restaurant: { select: { restaurantName: true, logoUrl: true } },
           },
         },
       },
     });
 
-    const lastMessageByJob = await this.lastMessagesByJob(
-      candidaturas.map((cand) => cand.job.id),
-    );
+    // Só as mensagens da conversa DELE: o filtro por professionalId impede
+    // que entre a última mensagem trocada com outro aprovado da mesma vaga.
+    const lastMessages = await this.lastMessagesByConversation({
+      professionalId,
+    });
 
-    const chats: ChatListItem[] = [];
-
-    for (const cand of candidaturas) {
-      const lastMessage = lastMessageByJob[cand.job.id];
-      // ponytail: unreadCount hardcoded em 0 (mesmo ceiling acima).
-      const unreadCount = 0;
-
-      chats.push({
+    return candidaturas.map((cand) => {
+      const last = lastMessages[conversationKey(cand.job.id, professionalId)];
+      return {
         jobId: cand.job.id,
+        professionalId,
         jobTitle: cand.job.title,
         otherPartyName: cand.job.restaurant.restaurantName,
         otherPartyPhoto: cand.job.restaurant.logoUrl ?? null,
         otherPartyRole: Role.RESTAURANTE,
-        lastMessageContent: lastMessage?.content ?? null,
-        lastMessageTime: lastMessage?.createdAt ?? null,
-        unreadCount,
-      });
-    }
-
-    return chats;
+        lastMessageContent: last?.content ?? null,
+        lastMessageTime: last?.createdAt ?? null,
+        // ponytail: unreadCount fixo em 0 (mesmo limite acima).
+        unreadCount: 0,
+      };
+    });
   }
 
-  // Busca a última mensagem de cada job em uma única query (evita o N+1 de
-  // fazer findFirst por chat dentro do loop acima).
-  private async lastMessagesByJob(jobIds: string[]): Promise<Record<string, LastMessage>> {
-    if (jobIds.length === 0) return {};
-
+  // Última mensagem de cada conversa (vaga + profissional) em uma única query,
+  // sem o N+1 de um findFirst por conversa.
+  private async lastMessagesByConversation(
+    where: Prisma.MessageWhereInput,
+  ): Promise<Record<string, LastMessage>> {
     const messages = await this.prisma.message.findMany({
-      where: { jobId: { in: jobIds } },
+      where,
       orderBy: { createdAt: 'desc' },
-      select: { jobId: true, content: true, createdAt: true },
+      distinct: ['jobId', 'professionalId'],
+      select: {
+        jobId: true,
+        professionalId: true,
+        content: true,
+        createdAt: true,
+      },
     });
 
-    const lastByJob: Record<string, LastMessage> = {};
+    const lastByConversation: Record<string, LastMessage> = {};
     for (const message of messages) {
-      if (!lastByJob[message.jobId]) {
-        lastByJob[message.jobId] = {
-          content: message.content,
-          createdAt: message.createdAt,
-        };
-      }
+      const key = conversationKey(message.jobId, message.professionalId);
+      lastByConversation[key] ??= {
+        content: message.content,
+        createdAt: message.createdAt,
+      };
     }
-
-    return lastByJob;
+    return lastByConversation;
   }
 }

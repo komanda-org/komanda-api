@@ -96,7 +96,11 @@ async function deleteUsers(tx: Tx, userIds: string[]): Promise<void> {
     tx,
     jobs.map((job) => job.id),
   );
-  await tx.message.deleteMany({ where: { senderId: { in: userIds } } });
+  await tx.message.deleteMany({
+    where: {
+      OR: [{ senderId: { in: userIds } }, { professionalId: { in: userIds } }],
+    },
+  });
   await tx.avaliacao.deleteMany({
     where: {
       OR: [
@@ -898,6 +902,8 @@ async function seedDemo(tx: Tx, passwordHash: string) {
     data: CHATS.flatMap((chat) =>
       chat.lines.map(([who, content], index) => ({
         jobId: get(jobIds, chat.job),
+        // Conversa = vaga + profissional.
+        professionalId: get(professionalIds, chat.professional),
         senderId:
           who === 'R'
             ? restaurantOfJob(chat.job)

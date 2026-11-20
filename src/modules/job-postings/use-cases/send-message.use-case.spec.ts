@@ -4,38 +4,40 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { SendMessageUseCase } from './send-message.use-case';
 import { AssertChatAccessUseCase } from './assert-chat-access';
 import { JobEventNotifier } from '../job-event-notifier';
+import { CHAT_MESSAGE_SELECT } from '../dto/message-response.dto';
 
 describe('SendMessageUseCase', () => {
   let useCase: SendMessageUseCase;
-  let prisma: Partial<Record<keyof PrismaService, jest.Mock>>;
-  let assertChatAccessMock: Partial<
-    Record<keyof AssertChatAccessUseCase, jest.Mock>
-  >;
+  let prisma: {
+    message: { create: jest.Mock };
+    restaurant: { findUnique: jest.Mock };
+    professional: { findUnique: jest.Mock };
+  };
+  let assertChatAccessMock: { execute: jest.Mock };
   let notifier: { newMessage: jest.Mock; safely: jest.Mock };
 
-  // Vaga com o restaurante e os profissionais aprovados (quem está na conversa).
-  const jobWithChat = {
+  // Conversa da vaga job-1 entre o restaurante rest-1 e o profissional prof-1.
+  const conversation = {
+    jobId: 'job-1',
+    professionalId: 'prof-1',
     restaurantId: 'rest-1',
-    restaurant: { restaurantName: 'Maré Alta' },
-    candidaturas: [
-      { professionalId: 'prof-1', professional: { fullName: 'Marina Souza' } },
-    ],
   };
 
   beforeEach(async () => {
     prisma = {
-      message: {
-        create: jest.fn(),
+      message: { create: jest.fn() },
+      restaurant: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ restaurantName: 'Maré Alta' }),
       },
-      job: {
-        findUnique: jest.fn().mockResolvedValue(jobWithChat),
+      professional: {
+        findUnique: jest.fn().mockResolvedValue({ fullName: 'Marina Souza' }),
       },
     };
-
     assertChatAccessMock = {
-      execute: jest.fn(),
+      execute: jest.fn().mockResolvedValue(conversation),
     };
-
     notifier = {
       newMessage: jest.fn().mockResolvedValue(undefined),
       safely: jest.fn((_what: string, send: () => Promise<unknown>) => send()),
@@ -58,52 +60,48 @@ describe('SendMessageUseCase', () => {
   });
 
   describe('execute', () => {
-    it('should call assertChatAccess and create message', async () => {
+    it('valida o acesso e grava a mensagem na conversa (vaga + profissional)', async () => {
       const mockMessage = {
         id: 'msg-1',
         jobId: 'job-1',
-        senderId: 'user-1',
+        professionalId: 'prof-1',
+        senderId: 'rest-1',
         content: 'Hello',
         createdAt: new Date(),
       };
-
-      assertChatAccessMock.execute.mockResolvedValue(undefined);
       prisma.message.create.mockResolvedValue(mockMessage);
 
       const result = await useCase.execute({
         jobId: 'job-1',
-        senderId: 'user-1',
+        senderId: 'rest-1',
+        professionalId: 'prof-1',
         content: 'Hello',
       });
 
       expect(assertChatAccessMock.execute).toHaveBeenCalledWith({
         jobId: 'job-1',
-        userId: 'user-1',
+        userId: 'rest-1',
+        professionalId: 'prof-1',
       });
       expect(prisma.message.create).toHaveBeenCalledWith({
         data: {
           jobId: 'job-1',
-          senderId: 'user-1',
+          professionalId: 'prof-1',
+          senderId: 'rest-1',
           content: 'Hello',
         },
-        select: {
-          id: true,
-          jobId: true,
-          senderId: true,
-          content: true,
-          createdAt: true,
-        },
+        select: CHAT_MESSAGE_SELECT,
       });
       expect(result).toEqual(mockMessage);
     });
 
     describe('notificação de mensagem nova', () => {
       const send = (senderId: string, onlineUserIds?: Set<string>) => {
-        assertChatAccessMock.execute.mockResolvedValue(undefined);
         prisma.message.create.mockResolvedValue({ id: 'msg-1' });
         return useCase.execute({
           jobId: 'job-1',
           senderId,
+          professionalId: 'prof-1',
           content: 'Pode começar segunda?',
           onlineUserIds,
         });
@@ -119,9 +117,10 @@ describe('SendMessageUseCase', () => {
         });
       });
 
-      it('mensagem do restaurante avisa os profissionais aprovados', async () => {
+      it('mensagem do restaurante avisa SÓ o profissional da conversa', async () => {
         await send('rest-1');
 
+        expect(notifier.newMessage).toHaveBeenCalledTimes(1);
         expect(notifier.newMessage).toHaveBeenCalledWith({
           recipientIds: ['prof-1'],
           senderName: 'Maré Alta',
@@ -135,7 +134,7 @@ describe('SendMessageUseCase', () => {
         expect(notifier.newMessage).not.toHaveBeenCalled();
       });
 
-      it('mensagem recusada pelo gate (403) não avisa ninguém', async () => {
+      it('mensagem recusada pelo gate (403) não grava nem avisa ninguém', async () => {
         assertChatAccessMock.execute.mockRejectedValue(
           new ForbiddenException('sem acesso'),
         );
@@ -148,33 +147,13 @@ describe('SendMessageUseCase', () => {
       });
     });
 
-    it('should propagate 403 from assertChatAccess when user not allowed', async () => {
-      assertChatAccessMock.execute.mockRejectedValue(
-        new ForbiddenException(
-          'Só é possível conversar após uma candidatura aprovada na vaga',
-        ),
-      );
-
-      await expect(
-        useCase.execute({
-          jobId: 'job-1',
-          senderId: 'user-1',
-          content: 'Hello',
-        }),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('should propagate 404 from assertChatAccess when job not found', async () => {
+    it('propaga o 404 do gate quando a vaga não existe', async () => {
       assertChatAccessMock.execute.mockRejectedValue(
         new NotFoundException('Vaga não encontrada'),
       );
 
       await expect(
-        useCase.execute({
-          jobId: 'job-1',
-          senderId: 'user-1',
-          content: 'Hello',
-        }),
+        useCase.execute({ jobId: 'job-1', senderId: 'prof-1', content: 'Hi' }),
       ).rejects.toThrow(NotFoundException);
     });
   });

@@ -244,6 +244,46 @@ describe('Messages WebSocket E2E', () => {
     return socket;
   };
 
+  const connectRestaurantSocket = async () => {
+    const token = jwtService.sign({ id: 'rest-1', role: Role.RESTAURANTE });
+    prisma.user.findUnique.mockResolvedValue(mockUsers.restaurant);
+    prisma.job.findUnique.mockResolvedValue(mockJob);
+    // Os dois profissionais (prof-1 e prof-2) estão aprovados na vaga.
+    prisma.candidatura.findFirst.mockResolvedValue(mockApprovedApplication);
+    prisma.message.findMany.mockResolvedValue([]);
+
+    const socket = createSocket(token);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error('Connection timeout')),
+        5000,
+      );
+      socket.on('connect', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      socket.on('connect_error', (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+    });
+    return socket;
+  };
+
+  /** true se o evento chegar dentro da janela; false se não chegar. */
+  const receivesWithin = (socket: Socket, event: string, ms: number) =>
+    new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => {
+        socket.off(event, onEvent);
+        resolve(false);
+      }, ms);
+      const onEvent = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      socket.once(event, onEvent);
+    });
+
   describe('Connection', () => {
     it('should accept connection with valid token', async () => {
       prisma.user.findUnique.mockResolvedValue(mockUsers.professional);
@@ -325,19 +365,39 @@ describe('Messages WebSocket E2E', () => {
         );
         socket.on('connect', () => {
           clearTimeout(timeout);
-          socket.emit('chat:join', { jobId: 'job-1' }, (ack: any) => {
-            expect(ack.ok).toBe(true);
-            expect(ack.messages).toEqual([]);
-            expect(ack.hasMore).toBe(false);
-            socket.disconnect();
-            resolve();
-          });
+          socket.emit(
+            'chat:join',
+            { jobId: 'job-1', professionalId: 'prof-1' },
+            (ack: any) => {
+              expect(ack.ok).toBe(true);
+              expect(ack.messages).toEqual([]);
+              expect(ack.hasMore).toBe(false);
+              socket.disconnect();
+              resolve();
+            },
+          );
         });
         socket.on('connect_error', (error) => {
           clearTimeout(timeout);
           reject(error);
         });
       });
+    });
+
+    it('restaurante sem professionalId recebe 400 (a vaga pode ter vários aprovados)', async () => {
+      const socket = await connectRestaurantSocket();
+
+      const ack = await waitForAck<any>(socket, 'chat:join', {
+        jobId: 'job-1',
+      });
+
+      expect(ack.ok).toBe(false);
+      expect(ack.error).toEqual({
+        statusCode: 400,
+        message: 'professionalId é obrigatório',
+      });
+
+      socket.disconnect();
     });
 
     it('should return 404 for non-existent job', async () => {
@@ -394,11 +454,59 @@ describe('Messages WebSocket E2E', () => {
         Promise.resolve({
           id: 'msg-1',
           jobId: args.data.jobId,
+          professionalId: args.data.professionalId,
           senderId: args.data.senderId,
           content: args.data.content,
           createdAt: new Date(),
         }),
       );
+    });
+
+    it('com 2 aprovados, a mensagem do restaurante chega só ao profissional da conversa', async () => {
+      // `socket` é o prof-1, já dentro da própria conversa (job-1 + prof-1).
+      const restaurant = await connectRestaurantSocket();
+      await waitForAck<any>(restaurant, 'chat:join', {
+        jobId: 'job-1',
+        professionalId: 'prof-2',
+      });
+
+      const prof1Received = receivesWithin(socket, 'chat:message', 700);
+      const restaurantEcho = waitForEvent<any>(restaurant, 'chat:message');
+
+      const ack = await waitForAck<any>(restaurant, 'chat:send', {
+        jobId: 'job-1',
+        professionalId: 'prof-2',
+        content: 'Só para o prof-2',
+      });
+
+      expect(ack.ok).toBe(true);
+      expect(ack.message.professionalId).toBe('prof-2');
+      expect(prisma.message.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            jobId: 'job-1',
+            professionalId: 'prof-2',
+            senderId: 'rest-1',
+          }),
+        }),
+      );
+      expect((await restaurantEcho).content).toBe('Só para o prof-2');
+      expect(await prof1Received).toBe(false);
+
+      // Na conversa do prof-1, ele recebe normalmente.
+      await waitForAck<any>(restaurant, 'chat:join', {
+        jobId: 'job-1',
+        professionalId: 'prof-1',
+      });
+      const prof1Message = waitForEvent<any>(socket, 'chat:message');
+      await waitForAck<any>(restaurant, 'chat:send', {
+        jobId: 'job-1',
+        professionalId: 'prof-1',
+        content: 'Agora para o prof-1',
+      });
+      expect((await prof1Message).content).toBe('Agora para o prof-1');
+
+      restaurant.disconnect();
     });
 
     afterEach(() => {

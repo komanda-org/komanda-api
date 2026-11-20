@@ -1,12 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { CandidaturaStatus, Role } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { CandidaturaStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AssertChatAccessUseCase } from './assert-chat-access';
 
 describe('AssertChatAccessUseCase', () => {
   let useCase: AssertChatAccessUseCase;
-  let prisma: Partial<Record<keyof PrismaService, jest.Mock>>;
+  let prisma: {
+    user: { findUnique: jest.Mock };
+    job: { findUnique: jest.Mock };
+    candidatura: { findFirst: jest.Mock };
+  };
 
   const mockUser = (
     overrides: Partial<{
@@ -36,17 +44,13 @@ describe('AssertChatAccessUseCase', () => {
     ...overrides,
   });
 
+  const approved = { id: 'candidatura-1', status: CandidaturaStatus.APROVADA };
+
   beforeEach(async () => {
     prisma = {
-      user: {
-        findUnique: jest.fn(),
-      },
-      job: {
-        findUnique: jest.fn(),
-      },
-      candidatura: {
-        findFirst: jest.fn(),
-      },
+      user: { findUnique: jest.fn() },
+      job: { findUnique: jest.fn() },
+      candidatura: { findFirst: jest.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -63,8 +67,8 @@ describe('AssertChatAccessUseCase', () => {
     jest.clearAllMocks();
   });
 
-  describe('execute', () => {
-    it('should throw 403 when user does not exist', async () => {
+  describe('conta e vaga', () => {
+    it('403 quando o usuário não existe', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
       await expect(
@@ -72,7 +76,7 @@ describe('AssertChatAccessUseCase', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw 403 when user is inactive', async () => {
+    it('403 quando o usuário está inativo', async () => {
       prisma.user.findUnique.mockResolvedValue(mockUser({ active: false }));
 
       await expect(
@@ -80,7 +84,7 @@ describe('AssertChatAccessUseCase', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw 403 when user is soft-deleted', async () => {
+    it('403 quando o usuário foi excluído', async () => {
       prisma.user.findUnique.mockResolvedValue(
         mockUser({ deletedAt: new Date() }),
       );
@@ -90,109 +94,137 @@ describe('AssertChatAccessUseCase', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw 404 when job does not exist', async () => {
+    it.each([
+      ['não existe', null],
+      ['está inativa', mockJob({ active: false })],
+      ['foi excluída', mockJob({ deletedAt: new Date() })],
+    ])('404 quando a vaga %s', async (_caso, job) => {
       prisma.user.findUnique.mockResolvedValue(mockUser());
-      prisma.job.findUnique.mockResolvedValue(null);
+      prisma.job.findUnique.mockResolvedValue(job);
 
       await expect(
         useCase.execute({ jobId: 'job-1', userId: 'user-1' }),
       ).rejects.toThrow(NotFoundException);
     });
+  });
 
-    it('should throw 404 when job is inactive', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockUser());
-      prisma.job.findUnique.mockResolvedValue(mockJob({ active: false }));
-
-      await expect(
-        useCase.execute({ jobId: 'job-1', userId: 'user-1' }),
-      ).rejects.toThrow(NotFoundException);
+  describe('restaurante dono da vaga', () => {
+    beforeEach(() => {
+      prisma.user.findUnique.mockResolvedValue(mockUser({ id: 'rest-1' }));
+      prisma.job.findUnique.mockResolvedValue(
+        mockJob({ restaurantId: 'rest-1' }),
+      );
     });
 
-    it('should throw 404 when job is soft-deleted', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockUser());
-      prisma.job.findUnique.mockResolvedValue(
-        mockJob({ deletedAt: new Date() }),
-      );
+    it('libera a conversa com um profissional aprovado', async () => {
+      prisma.candidatura.findFirst.mockResolvedValue(approved);
 
       await expect(
-        useCase.execute({ jobId: 'job-1', userId: 'user-1' }),
-      ).rejects.toThrow(NotFoundException);
+        useCase.execute({
+          jobId: 'job-1',
+          userId: 'rest-1',
+          professionalId: 'prof-1',
+        }),
+      ).resolves.toEqual({
+        jobId: 'job-1',
+        professionalId: 'prof-1',
+        restaurantId: 'rest-1',
+      });
+      expect(prisma.candidatura.findFirst).toHaveBeenCalledWith({
+        where: {
+          jobId: 'job-1',
+          professionalId: 'prof-1',
+          status: CandidaturaStatus.APROVADA,
+        },
+        select: { id: true },
+      });
     });
 
-    it('should allow access when user is the restaurant owner', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockUser());
-      prisma.job.findUnique.mockResolvedValue(
-        mockJob({ restaurantId: 'user-1' }),
-      );
-
-      await expect(
-        useCase.execute({ jobId: 'job-1', userId: 'user-1' }),
-      ).resolves.not.toThrow();
-    });
-
-    it('should throw 403 when professional has no approved application', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockUser());
-      prisma.job.findUnique.mockResolvedValue(
-        mockJob({ restaurantId: 'restaurant-1' }),
-      );
+    it('403 com professionalId que não foi aprovado na vaga', async () => {
       prisma.candidatura.findFirst.mockResolvedValue(null);
 
       await expect(
-        useCase.execute({ jobId: 'job-1', userId: 'user-1' }),
+        useCase.execute({
+          jobId: 'job-1',
+          userId: 'rest-1',
+          professionalId: 'prof-2',
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw 403 when professional has PENDENTE application', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockUser());
-      prisma.job.findUnique.mockResolvedValue(
-        mockJob({ restaurantId: 'restaurant-1' }),
+    it('400 sem professionalId (a vaga pode ter vários aprovados)', async () => {
+      await expect(
+        useCase.execute({ jobId: 'job-1', userId: 'rest-1' }),
+      ).rejects.toThrow(
+        new BadRequestException('professionalId é obrigatório'),
       );
-      // findFirst filters for APROVADA, so PENDENTE returns null
-      prisma.candidatura.findFirst.mockResolvedValue(null);
+      expect(prisma.candidatura.findFirst).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('profissional', () => {
+    beforeEach(() => {
+      prisma.user.findUnique.mockResolvedValue(mockUser({ id: 'prof-1' }));
+      prisma.job.findUnique.mockResolvedValue(
+        mockJob({ restaurantId: 'rest-1' }),
+      );
+    });
+
+    it('libera a própria conversa quando está aprovado', async () => {
+      prisma.candidatura.findFirst.mockResolvedValue(approved);
 
       await expect(
-        useCase.execute({ jobId: 'job-1', userId: 'user-1' }),
-      ).rejects.toThrow(ForbiddenException);
+        useCase.execute({ jobId: 'job-1', userId: 'prof-1' }),
+      ).resolves.toEqual({
+        jobId: 'job-1',
+        professionalId: 'prof-1',
+        restaurantId: 'rest-1',
+      });
     });
 
-    it('should throw 403 when professional has REJEITADA application', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockUser());
-      prisma.job.findUnique.mockResolvedValue(
-        mockJob({ restaurantId: 'restaurant-1' }),
-      );
-      // findFirst filters for APROVADA, so REJEITADA returns null
-      prisma.candidatura.findFirst.mockResolvedValue(null);
+    it('ignora professionalId de outra pessoa e usa o próprio id', async () => {
+      prisma.candidatura.findFirst.mockResolvedValue(approved);
 
-      await expect(
-        useCase.execute({ jobId: 'job-1', userId: 'user-1' }),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('should allow access when professional has APROVADA application', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockUser());
-      prisma.job.findUnique.mockResolvedValue(
-        mockJob({ restaurantId: 'restaurant-1' }),
-      );
-      prisma.candidatura.findFirst.mockResolvedValue({
-        id: 'candidatura-1',
-        status: CandidaturaStatus.APROVADA,
+      const conversation = await useCase.execute({
+        jobId: 'job-1',
+        userId: 'prof-1',
+        professionalId: 'prof-2',
       });
 
-      await expect(
-        useCase.execute({ jobId: 'job-1', userId: 'user-1' }),
-      ).resolves.not.toThrow();
+      expect(conversation.professionalId).toBe('prof-1');
+      const [[args]] = prisma.candidatura.findFirst.mock.calls as [
+        [{ where: { professionalId: string } }],
+      ];
+      expect(args.where.professionalId).toBe('prof-1');
     });
 
-    it('should throw 403 when professional tries to access another job', async () => {
-      prisma.user.findUnique.mockResolvedValue(mockUser());
-      prisma.job.findUnique.mockResolvedValue(
-        mockJob({ restaurantId: 'restaurant-1' }),
-      );
+    it('403 sem candidatura aprovada (pendente, rejeitada ou inexistente)', async () => {
+      // findFirst filtra por APROVADA: pendente/rejeitada voltam null
       prisma.candidatura.findFirst.mockResolvedValue(null);
 
       await expect(
-        useCase.execute({ jobId: 'other-job', userId: 'user-1' }),
-      ).rejects.toThrow(ForbiddenException);
+        useCase.execute({ jobId: 'job-1', userId: 'prof-1' }),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Só é possível conversar após uma candidatura aprovada na vaga',
+        ),
+      );
     });
+  });
+
+  it('restaurante que não é dono da vaga recebe 403', async () => {
+    prisma.user.findUnique.mockResolvedValue(mockUser({ id: 'rest-2' }));
+    prisma.job.findUnique.mockResolvedValue(
+      mockJob({ restaurantId: 'rest-1' }),
+    );
+    prisma.candidatura.findFirst.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        jobId: 'job-1',
+        userId: 'rest-2',
+        professionalId: 'prof-1',
+      }),
+    ).rejects.toThrow(ForbiddenException);
   });
 });
