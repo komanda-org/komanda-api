@@ -14,11 +14,13 @@ import { SendMessageUseCase } from './use-cases/send-message.use-case';
 import { ListMessagesUseCase } from './use-cases/list-messages.use-case';
 import { ListUserChatsUseCase } from './use-cases/list-user-chats.use-case';
 import { MessagesGateway } from './messages.gateway';
+import { JobEventNotifier } from './job-event-notifier';
 
 // PrismaModule é @Global, então não precisa ser importado aqui.
 // AuthModule sim: os guards presos no controller são instanciados no contexto
 // deste módulo, e o AuthGuard depende do JwtService.
-// NotificationsModule exporta o token NOTIFICACAO_SERVICE usado na criação de vaga.
+// NotificationsModule exporta o token NOTIFICACAO_SERVICE (vaga nova e
+// JobEventNotifier: candidatura, decisão, vaga encerrada e chat).
 @Module({
   imports: [AuthModule, NotificationsModule],
   controllers: [JobPostingsController, ApplicationStatusController],
@@ -34,6 +36,7 @@ import { MessagesGateway } from './messages.gateway';
     ListMessagesUseCase,
     ListUserChatsUseCase,
     MessagesGateway,
+    JobEventNotifier,
   ],
 })
 export class JobPostingsModule {}

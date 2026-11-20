@@ -321,6 +321,8 @@ export class MessagesGateway
         jobId: data.jobId,
         senderId: userId,
         content: data.content,
+        // Quem está na sala vê a mensagem ao vivo: não precisa de notificação.
+        onlineUserIds: this.roomUsers.get(data.jobId),
       });
 
       const messageDto = new MessageResponseDto(message);

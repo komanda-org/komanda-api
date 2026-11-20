@@ -6,6 +6,7 @@ import {
 import { CandidaturaStatus, JobStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateApplicationStatusUseCase } from './update-application-status.use-case';
+import type { JobEventNotifier } from '../job-event-notifier';
 
 const createMockPrisma = () => ({
   candidatura: {
@@ -16,9 +17,19 @@ const createMockPrisma = () => ({
 
 type MockPrisma = ReturnType<typeof createMockPrisma>;
 
+const createNotifierMock = () => ({
+  newApplication: jest.fn().mockResolvedValue(undefined),
+  applicationDecided: jest.fn().mockResolvedValue(undefined),
+  pendingClosedWithJob: jest.fn().mockResolvedValue(undefined),
+  newMessage: jest.fn().mockResolvedValue(undefined),
+  // Executa direto, como o real (sem o try/catch, que tem teste próprio).
+  safely: jest.fn((_what: string, send: () => Promise<unknown>) => send()),
+});
+
 describe('UpdateApplicationStatusUseCase', () => {
   let useCase: UpdateApplicationStatusUseCase;
   let prisma: MockPrisma;
+  let notifier: ReturnType<typeof createNotifierMock>;
 
   const RESTAURANTE_ID = 'restaurant-1';
   const VAGA_ID = 'job-1';
@@ -35,14 +46,63 @@ describe('UpdateApplicationStatusUseCase', () => {
       restaurantId: RESTAURANTE_ID,
       deletedAt: null,
       status: JobStatus.ABERTA,
+      title: 'Garçom',
+      restaurant: { restaurantName: 'Maré Alta' },
     },
   };
 
   beforeEach(() => {
     prisma = createMockPrisma();
+    notifier = createNotifierMock();
     useCase = new UpdateApplicationStatusUseCase(
       prisma as unknown as PrismaService,
+      notifier as unknown as JobEventNotifier,
     );
+  });
+
+  it.each([CandidaturaStatus.APROVADA, CandidaturaStatus.REJEITADA])(
+    'avisa o profissional quando a candidatura vira %s',
+    async (status) => {
+      prisma.candidatura.findUnique.mockResolvedValue(candidaturaPendente);
+      prisma.candidatura.update.mockResolvedValue({
+        ...candidaturaPendente,
+        status,
+      });
+
+      await useCase.execute({
+        jobId: VAGA_ID,
+        applicationId: CANDIDATURA_ID,
+        restaurantId: RESTAURANTE_ID,
+        status,
+      });
+
+      expect(notifier.applicationDecided).toHaveBeenCalledWith({
+        professionalId: 'professional-1',
+        jobTitle: 'Garçom',
+        restaurantName: 'Maré Alta',
+        status,
+      });
+    },
+  );
+
+  it('reenviar o mesmo status não avisa de novo', async () => {
+    prisma.candidatura.findUnique.mockResolvedValue({
+      ...candidaturaPendente,
+      status: CandidaturaStatus.APROVADA,
+    });
+    prisma.candidatura.update.mockResolvedValue({
+      ...candidaturaPendente,
+      status: CandidaturaStatus.APROVADA,
+    });
+
+    await useCase.execute({
+      jobId: VAGA_ID,
+      applicationId: CANDIDATURA_ID,
+      restaurantId: RESTAURANTE_ID,
+      status: CandidaturaStatus.APROVADA,
+    });
+
+    expect(notifier.applicationDecided).not.toHaveBeenCalled();
   });
 
   it.each([CandidaturaStatus.APROVADA, CandidaturaStatus.REJEITADA])(
@@ -66,6 +126,7 @@ describe('UpdateApplicationStatusUseCase', () => {
         ),
       );
       expect(prisma.candidatura.update).not.toHaveBeenCalled();
+      expect(notifier.applicationDecided).not.toHaveBeenCalled();
     },
   );
 

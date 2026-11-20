@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Candidatura, CandidaturaStatus, JobStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { JobEventNotifier } from '../job-event-notifier';
 
 interface UpdateApplicationStatusInput {
   jobId: string;
@@ -21,12 +22,17 @@ const STATUS_TERMINAIS: CandidaturaStatus[] = [
 
 @Injectable()
 export class UpdateApplicationStatusUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifier: JobEventNotifier,
+  ) {}
 
   async execute(input: UpdateApplicationStatusInput): Promise<Candidatura> {
     const candidatura = await this.prisma.candidatura.findUnique({
       where: { id: input.applicationId },
-      include: { job: true },
+      include: {
+        job: { include: { restaurant: { select: { restaurantName: true } } } },
+      },
     });
 
     // Candidatura de outra vaga, ou de vaga excluída logicamente, é tratada
@@ -63,9 +69,21 @@ export class UpdateApplicationStatusUseCase {
       );
     }
 
-    return this.prisma.candidatura.update({
+    const atualizada = await this.prisma.candidatura.update({
       where: { id: input.applicationId },
       data: { status: input.status },
     });
+
+    // Reenviar o mesmo status não gera aviso repetido.
+    if (candidatura.status !== input.status) {
+      await this.notifier.applicationDecided({
+        professionalId: candidatura.professionalId,
+        jobTitle: candidatura.job.title,
+        restaurantName: candidatura.job.restaurant.restaurantName,
+        status: input.status,
+      });
+    }
+
+    return atualizada;
   }
 }

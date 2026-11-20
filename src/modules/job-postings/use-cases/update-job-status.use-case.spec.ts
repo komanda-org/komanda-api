@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateJobStatusUseCase } from './update-job-status.use-case';
+import type { JobEventNotifier } from '../job-event-notifier';
 
 const createMockPrisma = () => ({
   job: {
@@ -19,7 +20,13 @@ const createMockPrisma = () => ({
     update: jest.fn(),
   },
   candidatura: {
+    findMany: jest.fn().mockResolvedValue([]),
     updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+  },
+  restaurant: {
+    findUnique: jest
+      .fn()
+      .mockResolvedValue({ restaurantName: 'Bistrô Paulista' }),
   },
   // Forma em lista: resolve as operações na ordem, como o Prisma.
   $transaction: jest.fn((operations: Promise<unknown>[]) =>
@@ -29,9 +36,19 @@ const createMockPrisma = () => ({
 
 type MockPrisma = ReturnType<typeof createMockPrisma>;
 
+const createNotifierMock = () => ({
+  newApplication: jest.fn().mockResolvedValue(undefined),
+  applicationDecided: jest.fn().mockResolvedValue(undefined),
+  pendingClosedWithJob: jest.fn().mockResolvedValue(undefined),
+  newMessage: jest.fn().mockResolvedValue(undefined),
+  // Executa direto, como o real (sem o try/catch, que tem teste próprio).
+  safely: jest.fn((_what: string, send: () => Promise<unknown>) => send()),
+});
+
 describe('UpdateJobStatusUseCase', () => {
   let useCase: UpdateJobStatusUseCase;
   let prisma: MockPrisma;
+  let notifier: ReturnType<typeof createNotifierMock>;
 
   const RESTAURANTE_ID = 'restaurant-1';
   const VAGA_ID = 'job-1';
@@ -67,7 +84,11 @@ describe('UpdateJobStatusUseCase', () => {
 
   beforeEach(() => {
     prisma = createMockPrisma();
-    useCase = new UpdateJobStatusUseCase(prisma as unknown as PrismaService);
+    notifier = createNotifierMock();
+    useCase = new UpdateJobStatusUseCase(
+      prisma as unknown as PrismaService,
+      notifier as unknown as JobEventNotifier,
+    );
   });
 
   it('percorre ABERTA → PAUSADA → ABERTA → ENCERRADA', async () => {
@@ -116,7 +137,11 @@ describe('UpdateJobStatusUseCase', () => {
       vagaDoRestaurante(JobStatus.ABERTA),
     );
     prisma.job.update.mockResolvedValue(vagaGravada(JobStatus.ENCERRADA));
-    prisma.candidatura.updateMany.mockResolvedValue({ count: 3 });
+    prisma.candidatura.findMany.mockResolvedValue([
+      { professionalId: 'prof-1' },
+      { professionalId: 'prof-2' },
+    ]);
+    prisma.candidatura.updateMany.mockResolvedValue({ count: 2 });
 
     const result = await executar(JobStatus.ENCERRADA);
 
@@ -126,6 +151,22 @@ describe('UpdateJobStatusUseCase', () => {
     });
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(result.status).toBe(JobStatus.ENCERRADA);
+    expect(notifier.pendingClosedWithJob).toHaveBeenCalledWith({
+      professionalIds: ['prof-1', 'prof-2'],
+      jobTitle: 'Chef de Cozinha',
+      restaurantName: 'Bistrô Paulista',
+    });
+  });
+
+  it('encerrar sem candidatos pendentes não avisa ninguém', async () => {
+    prisma.job.findUnique.mockResolvedValue(
+      vagaDoRestaurante(JobStatus.ABERTA),
+    );
+    prisma.job.update.mockResolvedValue(vagaGravada(JobStatus.ENCERRADA));
+
+    await executar(JobStatus.ENCERRADA);
+
+    expect(notifier.pendingClosedWithJob).not.toHaveBeenCalled();
   });
 
   it.each([JobStatus.PAUSADA, JobStatus.ABERTA])(
@@ -157,6 +198,7 @@ describe('UpdateJobStatusUseCase', () => {
     await expect(executar(JobStatus.ENCERRADA)).rejects.toBeInstanceOf(
       ConflictException,
     );
+    expect(notifier.pendingClosedWithJob).not.toHaveBeenCalled();
   });
 
   it('não mexe em closedAt ao pausar ou reabrir', async () => {

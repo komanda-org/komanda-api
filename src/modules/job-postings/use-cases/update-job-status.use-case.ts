@@ -1,6 +1,7 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { CandidaturaStatus, JobStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { JobEventNotifier } from '../job-event-notifier';
 import {
   JobPostingResponseDto,
   toJobPostingResponse,
@@ -23,7 +24,10 @@ const TRANSICOES_PERMITIDAS: Record<JobStatus, JobStatus[]> = {
 
 @Injectable()
 export class UpdateJobStatusUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifier: JobEventNotifier,
+  ) {}
 
   async execute(input: UpdateJobStatusInput): Promise<JobPostingResponseDto> {
     const vaga = await findOwnedJob(
@@ -55,6 +59,12 @@ export class UpdateJobStatusUseCase {
         return toJobPostingResponse(await atualizarVaga);
       }
 
+      // Quem vai ser recusado, para avisar depois do commit.
+      const pendentes = await this.prisma.candidatura.findMany({
+        where: { jobId: input.jobId, status: CandidaturaStatus.PENDENTE },
+        select: { professionalId: true },
+      });
+
       // Vaga encerrada não tem mais seleção: quem ainda esperava resposta é
       // recusado, para não ficar "Pendente" para sempre. Aprovadas ficam como
       // estão. Mesma transação: se o update da vaga falhar (409), nada muda.
@@ -65,6 +75,23 @@ export class UpdateJobStatusUseCase {
           data: { status: CandidaturaStatus.REJEITADA },
         }),
       ]);
+
+      if (pendentes.length > 0) {
+        await this.notifier.safely(
+          `vaga encerrada ${input.jobId}`,
+          async () => {
+            const restaurante = await this.prisma.restaurant.findUnique({
+              where: { userId: input.restaurantId },
+              select: { restaurantName: true },
+            });
+            await this.notifier.pendingClosedWithJob({
+              professionalIds: pendentes.map((p) => p.professionalId),
+              jobTitle: vagaAtualizada.title,
+              restaurantName: restaurante?.restaurantName ?? 'O restaurante',
+            });
+          },
+        );
+      }
 
       return toJobPostingResponse(vagaAtualizada);
     } catch (error) {

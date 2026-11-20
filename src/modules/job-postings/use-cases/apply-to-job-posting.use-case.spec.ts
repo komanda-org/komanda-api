@@ -6,6 +6,7 @@ import {
 import { JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApplyToJobPostingUseCase } from './apply-to-job-posting.use-case';
+import type { JobEventNotifier } from '../job-event-notifier';
 import { VISIBLE_RESTAURANT_WHERE } from 'src/modules/jobs/job.mapper';
 
 // Mock tipado no lugar de `any`: só declaramos os métodos do Prisma que este
@@ -15,9 +16,19 @@ type PrismaMock = {
   candidatura: { create: jest.Mock };
 };
 
+const createNotifierMock = () => ({
+  newApplication: jest.fn().mockResolvedValue(undefined),
+  applicationDecided: jest.fn().mockResolvedValue(undefined),
+  pendingClosedWithJob: jest.fn().mockResolvedValue(undefined),
+  newMessage: jest.fn().mockResolvedValue(undefined),
+  // Executa direto, como o real (sem o try/catch, que tem teste próprio).
+  safely: jest.fn((_what: string, send: () => Promise<unknown>) => send()),
+});
+
 describe('ApplyToJobPostingUseCase', () => {
   let useCase: ApplyToJobPostingUseCase;
   let prisma: PrismaMock;
+  let notifier: ReturnType<typeof createNotifierMock>;
 
   const VAGA_ID = 'job-1';
   const PROFISSIONAL_ID = 'professional-1';
@@ -38,6 +49,8 @@ describe('ApplyToJobPostingUseCase', () => {
     professionalId: PROFISSIONAL_ID,
     createdAt: new Date('2026-07-10T12:00:00Z'),
     updatedAt: new Date('2026-07-10T12:00:00Z'),
+    job: { restaurantId: 'restaurant-1', title: 'Garçom' },
+    professional: { fullName: 'Marina Souza' },
   };
 
   const prismaError = (code: string) =>
@@ -53,7 +66,11 @@ describe('ApplyToJobPostingUseCase', () => {
     };
 
     // Um único cast na fronteira do mock — evita `any` espalhado pelo teste.
-    useCase = new ApplyToJobPostingUseCase(prisma as unknown as PrismaService);
+    notifier = createNotifierMock();
+    useCase = new ApplyToJobPostingUseCase(
+      prisma as unknown as PrismaService,
+      notifier as unknown as JobEventNotifier,
+    );
   });
 
   it('cria a candidatura mapeando vagaId/profissionalId para os campos do schema', async () => {
@@ -69,6 +86,29 @@ describe('ApplyToJobPostingUseCase', () => {
       }),
     );
     expect(result).toBe(candidaturaCriada);
+  });
+
+  it('avisa o restaurante da candidatura nova', async () => {
+    prisma.job.findFirst.mockResolvedValue(vagaAberta);
+    prisma.candidatura.create.mockResolvedValue(candidaturaCriada);
+
+    await useCase.execute(VAGA_ID, PROFISSIONAL_ID);
+
+    expect(notifier.newApplication).toHaveBeenCalledWith({
+      restaurantId: 'restaurant-1',
+      jobTitle: 'Garçom',
+      professionalName: 'Marina Souza',
+    });
+  });
+
+  it('candidatura recusada (409) não gera aviso', async () => {
+    prisma.job.findFirst.mockResolvedValue(vagaAberta);
+    prisma.candidatura.create.mockRejectedValue(prismaError('P2002'));
+
+    await expect(
+      useCase.execute(VAGA_ID, PROFISSIONAL_ID),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(notifier.newApplication).not.toHaveBeenCalled();
   });
 
   it('lança NotFoundException quando a vaga não existe', async () => {
