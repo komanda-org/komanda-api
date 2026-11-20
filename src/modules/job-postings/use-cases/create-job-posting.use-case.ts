@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ContractType, Job, Prisma } from '@prisma/client';
+import { ContractType, Job, Prisma, JobShift } from '@prisma/client';
 import {
   JobPostingResponseDto,
   toJobPostingResponse,
@@ -17,7 +17,7 @@ interface CreateJobPostingInput {
   requirements?: string;
   salary?: number;
   contractType: ContractType;
-  shift?: string;
+  shifts?: JobShift[];
   urgent?: boolean;
   restaurantId: string;
 }
@@ -68,7 +68,7 @@ export class CreateJobPostingUseCase {
           requirements: input.requirements,
           salary: input.salary,
           contractType: input.contractType,
-          shift: input.shift,
+          shifts: input.shifts,
           urgent: input.urgent,
           restaurantId: input.restaurantId,
         },

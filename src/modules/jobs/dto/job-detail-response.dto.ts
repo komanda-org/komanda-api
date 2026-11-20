@@ -1,5 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CandidaturaStatus, ContractType, JobStatus } from '@prisma/client';
+import {
+  CandidaturaStatus,
+  ContractType,
+  JobShift,
+  JobStatus,
+} from '@prisma/client';
 import type { JobResponseDto } from './job-response.dto';
 
 export class JobDetailRestaurantDto {
@@ -61,8 +66,13 @@ export class JobDetailResponseDto implements JobResponseDto {
   @ApiProperty({ enum: ContractType })
   contractType!: ContractType;
 
-  @ApiProperty({ type: String, nullable: true, example: 'NOITE' })
-  shift!: string | null;
+  @ApiProperty({
+    isArray: true,
+    enum: JobShift,
+    example: [JobShift.MANHA, JobShift.TARDE],
+    description: 'Lista vazia = turno não informado',
+  })
+  shifts!: JobShift[];
 
   @ApiProperty({ enum: JobStatus })
   status!: JobStatus;

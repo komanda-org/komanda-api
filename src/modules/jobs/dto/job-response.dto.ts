@@ -1,4 +1,4 @@
-import { ContractType, JobStatus } from '@prisma/client';
+import { ContractType, JobStatus, JobShift } from '@prisma/client';
 
 export interface JobRestaurantDto {
   restaurantName: string;
@@ -18,7 +18,7 @@ export interface JobResponseDto {
   requirements: string | null;
   salary: string | null;
   contractType: ContractType;
-  shift: string | null;
+  shifts: JobShift[];
   status: JobStatus;
   urgent: boolean;
   restaurantId: string;

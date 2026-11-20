@@ -1,5 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
-import { ContractType, JobStatus, Prisma, Role } from '@prisma/client';
+import {
+  ContractType,
+  JobStatus,
+  Prisma,
+  Role,
+  JobShift,
+} from '@prisma/client';
 import type { PrismaService } from 'src/prisma/prisma.service';
 import {
   GetRestaurantPublicProfileUseCase,
@@ -26,7 +32,7 @@ const restaurantRow = (overrides: Record<string, unknown> = {}) => ({
       title: 'Garçom',
       contractType: ContractType.CLT,
       salary: new Prisma.Decimal('2200.50'),
-      shift: 'NOITE',
+      shifts: [JobShift.NOITE],
       urgent: true,
       createdAt: new Date('2026-11-18T10:00:00Z'),
     },
@@ -35,7 +41,7 @@ const restaurantRow = (overrides: Record<string, unknown> = {}) => ({
       title: 'Cozinheiro',
       contractType: ContractType.FREELANCER,
       salary: null,
-      shift: null,
+      shifts: [],
       urgent: false,
       createdAt: new Date('2026-11-17T10:00:00Z'),
     },
@@ -112,7 +118,7 @@ describe('GetRestaurantPublicProfileUseCase', () => {
           title: 'Garçom',
           contractType: ContractType.CLT,
           salary: 2200.5,
-          shift: 'NOITE',
+          shifts: [JobShift.NOITE],
           urgent: true,
           createdAt: new Date('2026-11-18T10:00:00Z'),
         },
@@ -121,7 +127,7 @@ describe('GetRestaurantPublicProfileUseCase', () => {
           title: 'Cozinheiro',
           contractType: ContractType.FREELANCER,
           salary: null,
-          shift: null,
+          shifts: [],
           urgent: false,
           createdAt: new Date('2026-11-17T10:00:00Z'),
         },

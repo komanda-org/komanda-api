@@ -5,6 +5,7 @@ import {
   JobStatus,
   Prisma,
   Role,
+  JobShift,
 } from '@prisma/client';
 import type { PrismaService } from 'src/prisma/prisma.service';
 import { PUBLIC_RESTAURANT_SELECT } from '../job.mapper';
@@ -27,7 +28,7 @@ const jobRow = (overrides: Record<string, unknown> = {}) => ({
   requirements: 'Experiência de 1 ano',
   salary: new Prisma.Decimal('2200.50'),
   contractType: ContractType.CLT,
-  shift: 'NOITE',
+  shifts: [JobShift.NOITE],
   status: JobStatus.ABERTA,
   urgent: true,
   restaurantId: 'restaurant-1',
@@ -93,7 +94,7 @@ describe('GetJobByIdUseCase', () => {
       requirements: 'Experiência de 1 ano',
       salary: '2200.5',
       contractType: ContractType.CLT,
-      shift: 'NOITE',
+      shifts: [JobShift.NOITE],
       status: JobStatus.ABERTA,
       urgent: true,
       restaurantId: 'restaurant-1',

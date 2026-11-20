@@ -1,4 +1,4 @@
-import { ContractType, JobStatus, Prisma } from '@prisma/client';
+import { ContractType, JobStatus, Prisma, JobShift } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { parseKeywords, SearchJobsUseCase } from './search-jobs.use-case';
 import { SearchJobsQueryDto } from '../dto/search-jobs-query.dto';
@@ -33,7 +33,7 @@ describe('SearchJobsUseCase', () => {
     requirements: 'Experiência mínima de 2 anos',
     salary: { toString: () => '5000.00' },
     contractType: ContractType.CLT,
-    shift: 'NOITE',
+    shifts: [JobShift.NOITE],
     status: JobStatus.ABERTA,
     urgent: true,
     restaurantId: 'restaurant-1',
@@ -207,11 +207,11 @@ describe('SearchJobsUseCase', () => {
 
     expect(mockPrisma.job.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { ...baseWhere, shift: 'NOITE' },
+        where: { ...baseWhere, shifts: { has: 'NOITE' } },
       }),
     );
     expect(mockPrisma.job.count).toHaveBeenCalledWith({
-      where: { ...baseWhere, shift: 'NOITE' },
+      where: { ...baseWhere, shifts: { has: 'NOITE' } },
     });
   });
 
@@ -221,7 +221,7 @@ describe('SearchJobsUseCase', () => {
     const [[callArgs]] = mockPrisma.job.findMany.mock.calls as [
       [{ where: Prisma.JobWhereInput }],
     ];
-    expect(callArgs.where).not.toHaveProperty('shift');
+    expect(callArgs.where).not.toHaveProperty('shifts');
   });
 
   it('should only apply the minSalary filter when it is the only param sent', async () => {
@@ -253,12 +253,12 @@ describe('SearchJobsUseCase', () => {
     );
   });
 
-  it('should map a null shift for jobs created before the shift column', async () => {
-    mockPrisma.job.findMany.mockResolvedValue([{ ...mockJob, shift: null }]);
+  it('should map an empty shifts list when the job has no shift', async () => {
+    mockPrisma.job.findMany.mockResolvedValue([{ ...mockJob, shifts: [] }]);
 
     const result = await useCase.execute({});
 
-    expect(result.data[0].shift).toBeNull();
+    expect(result.data[0].shifts).toEqual([]);
   });
 
   it('should map the response fields, including a null salary', async () => {
@@ -270,7 +270,7 @@ describe('SearchJobsUseCase', () => {
       id: 'job-1',
       title: 'Chef de cozinha',
       salary: null,
-      shift: 'NOITE',
+      shifts: [JobShift.NOITE],
       restaurant: {
         restaurantName: 'Restaurante Exemplo',
         logoUrl: 'https://example.com/logo.png',

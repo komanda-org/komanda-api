@@ -28,12 +28,14 @@ export class SearchJobsUseCase {
       where.contractType = query.contractType;
     }
 
-    // Turno já chega normalizado (trim + maiúsculas) pelo DTO.
     // Filtro por distância fica fora do MVP: exigiria geolocalização
     // (coordenadas + cálculo espacial); o bairro textual (RF02) é a
     // localização aceita por ora.
+
+    // Turno já chega normalizado e validado pelo DTO; a vaga entra se tiver
+    // esse turno entre os dela (MANHA acha "MANHA" e "MANHA + TARDE").
     if (query.shift) {
-      where.shift = query.shift;
+      where.shifts = { has: query.shift };
     }
 
     if (query.minSalary !== undefined && query.minSalary !== null) {

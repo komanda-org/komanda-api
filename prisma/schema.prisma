@@ -26,6 +26,15 @@ enum ContractType {
   ESTAGIO
 }
 
+// Turnos da vaga. Uma vaga pode ter vários (ex.: MANHA + TARDE); INTEGRAL
+// já cobre o dia todo e não se combina com os outros (regra no DTO).
+enum JobShift {
+  MANHA
+  TARDE
+  NOITE
+  INTEGRAL
+}
+
 // Disponibilidade declarada no perfil do profissional. Diferente de
 // ContractType (vaga): inclui TEMPORARIO e não tem ESTAGIO.
 enum WorkModel {
@@ -175,7 +184,8 @@ model Job {
   requirements String?      @db.Text
   salary       Decimal?     @db.Decimal(10, 2)
   contractType ContractType @map("contract_type")
-  shift        String?      @db.VarChar(30)
+  /// Lista vazia = turno não informado
+  shifts       JobShift[]   @default([])
   status       JobStatus    @default(ABERTA)
   urgent       Boolean      @default(false)
   closedAt     DateTime?    @map("closed_at")

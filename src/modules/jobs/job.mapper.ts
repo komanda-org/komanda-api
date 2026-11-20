@@ -27,7 +27,7 @@ export function toJobResponse(job: JobWithPublicRestaurant): JobResponseDto {
     requirements: job.requirements,
     salary: job.salary ? job.salary.toString() : null,
     contractType: job.contractType,
-    shift: job.shift,
+    shifts: job.shifts,
     status: job.status,
     urgent: job.urgent,
     restaurantId: job.restaurantId,

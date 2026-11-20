@@ -70,7 +70,7 @@ export class JobPostingsController {
       requirements: dto.requirements,
       salary: dto.salary,
       contractType: dto.contractType,
-      shift: dto.shift,
+      shifts: dto.shifts,
       urgent: dto.urgent,
       restaurantId: req.user.id,
     });
@@ -108,6 +108,7 @@ export class JobPostingsController {
         description: dto.description,
         requirements: dto.requirements,
         salary: dto.salary,
+        shifts: dto.shifts,
         contractType: dto.contractType,
         urgent: dto.urgent,
       },
@@ -193,7 +194,11 @@ export class JobPostingsController {
   @HttpCode(HttpStatus.OK)
   @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
   @ApiOperation({ summary: 'Listar conversas do usuário (matches aprovados)' })
-  @ApiResponse({ status: 200, description: 'Lista de conversas', type: [UserChatResponseDto] })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de conversas',
+    type: [UserChatResponseDto],
+  })
   async listMyChats(
     @Req() req: AuthenticatedRequest,
   ): Promise<UserChatResponseDto[]> {

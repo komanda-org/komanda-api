@@ -4,6 +4,7 @@ import {
   ContractType,
   JobStatus,
   Role,
+  JobShift,
 } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
@@ -86,9 +87,8 @@ describe('JobPostingsController', () => {
     listJobApplicantsUseCase = module.get<ListJobApplicantsUseCase>(
       ListJobApplicantsUseCase,
     );
-    listUserChatsUseCase = module.get<ListUserChatsUseCase>(
-      ListUserChatsUseCase,
-    );
+    listUserChatsUseCase =
+      module.get<ListUserChatsUseCase>(ListUserChatsUseCase);
     updateJobPostingUseCase = module.get<UpdateJobPostingUseCase>(
       UpdateJobPostingUseCase,
     );
@@ -171,12 +171,19 @@ describe('JobPostingsController', () => {
       .spyOn(updateJobPostingUseCase, 'execute')
       .mockResolvedValue(response);
 
-    const result = await controller.update('job-1', { urgent: true }, req);
+    const result = await controller.update(
+      'job-1',
+      { urgent: true, shifts: [JobShift.MANHA, JobShift.TARDE] },
+      req,
+    );
 
     expect(executeSpy).toHaveBeenCalledWith({
       jobId: 'job-1',
       restaurantId: 'restaurant-1',
-      changes: expect.objectContaining({ urgent: true }) as unknown,
+      changes: expect.objectContaining({
+        urgent: true,
+        shifts: [JobShift.MANHA, JobShift.TARDE],
+      }) as unknown,
     });
     expect(result).toBe(response);
   });

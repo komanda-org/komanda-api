@@ -4,7 +4,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { ContractType, JobStatus, Prisma } from '@prisma/client';
+import { ContractType, JobStatus, Prisma, JobShift } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateJobPostingUseCase } from './update-job-posting.use-case';
 
@@ -147,6 +147,51 @@ describe('UpdateJobPostingUseCase', () => {
         data: expect.objectContaining({ title: undefined }) as unknown,
       }),
     );
+  });
+
+  it('grava os turnos editados (mais de um)', async () => {
+    prisma.job.findUnique.mockResolvedValue(vagaDoRestaurante);
+    prisma.job.update.mockResolvedValue({
+      ...vagaGravada,
+      shifts: [JobShift.MANHA, JobShift.TARDE],
+    });
+
+    const result = await useCase.execute({
+      jobId: VAGA_ID,
+      restaurantId: RESTAURANTE_ID,
+      changes: { shifts: [JobShift.MANHA, JobShift.TARDE] },
+    });
+
+    expect(prisma.job.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          shifts: [JobShift.MANHA, JobShift.TARDE],
+        }) as unknown,
+      }),
+    );
+    expect(result.shifts).toEqual([JobShift.MANHA, JobShift.TARDE]);
+  });
+
+  it('turnos omitidos não são alterados; [] apaga', async () => {
+    prisma.job.findUnique.mockResolvedValue(vagaDoRestaurante);
+    prisma.job.update.mockResolvedValue(vagaGravada);
+
+    await useCase.execute({
+      jobId: VAGA_ID,
+      restaurantId: RESTAURANTE_ID,
+      changes: { title: 'Título novo da vaga' },
+    });
+    await useCase.execute({
+      jobId: VAGA_ID,
+      restaurantId: RESTAURANTE_ID,
+      changes: { shifts: [] },
+    });
+
+    const calls = prisma.job.update.mock.calls as [
+      { data: Record<string, unknown> },
+    ][];
+    expect(calls[0][0].data.shifts).toBeUndefined();
+    expect(calls[1][0].data.shifts).toEqual([]);
   });
 
   it('repassa null em salary e requirements para limpar as colunas anuláveis', async () => {
