@@ -24,6 +24,12 @@ describe('ListReceivedReviewsUseCase', () => {
   const RESTAURANT_ID = 'restaurant-1';
   const createdAt = new Date('2026-07-10T12:00:00Z');
 
+  const available = {
+    active: true,
+    deletedAt: null,
+    user: { active: true, deletedAt: null },
+  };
+
   const reviewRow = {
     id: 'review-1',
     rating: 5,
@@ -32,6 +38,16 @@ describe('ListReceivedReviewsUseCase', () => {
     professionalId: PROFESSIONAL_ID,
     restaurantId: RESTAURANT_ID,
     createdAt,
+    professional: {
+      fullName: 'Marina Souza',
+      profilePhoto: 'https://img/marina.png',
+      ...available,
+    },
+    restaurant: {
+      restaurantName: 'Maré Alta',
+      logoUrl: 'https://img/mare.png',
+      ...available,
+    },
   };
 
   beforeEach(() => {
@@ -98,6 +114,12 @@ describe('ListReceivedReviewsUseCase', () => {
           comment: 'Excelente profissional',
           jobId: 'job-1',
           reviewerId: RESTAURANT_ID,
+          reviewer: {
+            id: RESTAURANT_ID,
+            name: 'Maré Alta',
+            photo: 'https://img/mare.png',
+            role: Role.RESTAURANTE,
+          },
           createdAt,
         },
       ],
@@ -128,7 +150,45 @@ describe('ListReceivedReviewsUseCase', () => {
       expect.objectContaining({ where }),
     );
     expect(result.data[0].reviewerId).toBe(PROFESSIONAL_ID);
+    expect(result.data[0].reviewer).toEqual({
+      id: PROFESSIONAL_ID,
+      name: 'Marina Souza',
+      photo: 'https://img/marina.png',
+      role: Role.PROFISSIONAL,
+    });
   });
+
+  it.each([
+    [
+      'conta do usuário excluída',
+      { user: { active: true, deletedAt: new Date() } },
+    ],
+    ['conta do usuário inativa', { user: { active: false, deletedAt: null } }],
+    ['perfil excluído', { deletedAt: new Date() }],
+  ])(
+    'mostra "Usuário removido" sem foto quando o autor tem %s',
+    async (_caso, override) => {
+      prisma.user.findUnique.mockResolvedValue({
+        role: Role.PROFISSIONAL,
+        active: true,
+        deletedAt: null,
+      });
+      prisma.avaliacao.findMany.mockResolvedValue([
+        { ...reviewRow, restaurant: { ...reviewRow.restaurant, ...override } },
+      ]);
+      prisma.avaliacao.count.mockResolvedValue(1);
+      prisma.avaliacao.aggregate.mockResolvedValue({ _avg: { rating: 5 } });
+
+      const result = await useCase.execute({ userId: PROFESSIONAL_ID });
+
+      expect(result.data[0].reviewer).toEqual({
+        id: RESTAURANT_ID,
+        name: 'Usuário removido',
+        photo: null,
+        role: Role.RESTAURANTE,
+      });
+    },
+  );
 
   it('aplica skip/take informados na paginação', async () => {
     prisma.user.findUnique.mockResolvedValue({

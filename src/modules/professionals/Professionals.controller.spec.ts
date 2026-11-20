@@ -4,6 +4,7 @@ import { RolesGuard } from 'src/auth/roles.guard';
 import { ProfessionalsController } from './Professionals.controller';
 import { RegisterProfessionalUseCase } from './use-cases/register-professional.use-case';
 import { SearchProfessionalsUseCase } from './use-cases/search-professionals.use-case';
+import { GetProfessionalPublicProfileUseCase } from './use-cases/get-professional-public-profile.use-case';
 
 describe('ProfessionalsController', () => {
   let controller: ProfessionalsController;
@@ -22,6 +23,12 @@ describe('ProfessionalsController', () => {
         },
         {
           provide: SearchProfessionalsUseCase,
+          useValue: {
+            execute: jest.fn(),
+          },
+        },
+        {
+          provide: GetProfessionalPublicProfileUseCase,
           useValue: {
             execute: jest.fn(),
           },
