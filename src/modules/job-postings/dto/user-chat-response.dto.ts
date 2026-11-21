@@ -12,9 +12,6 @@ export class UserChatResponseDto {
   professionalId!: string;
 
   @ApiProperty()
-  professionalId!: string;
-
-  @ApiProperty()
   jobTitle!: string;
 
   @ApiProperty()

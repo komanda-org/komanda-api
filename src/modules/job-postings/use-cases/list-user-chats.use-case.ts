@@ -64,34 +64,18 @@ export class ListUserChatsUseCase {
       },
     });
 
-    if (jobs.length === 0) return [];
-
-    // Buscar todas as mensagens desses jobs e agrupar por (jobId, professionalId)
-    // para pegar a última mensagem de cada conversa.
-    const jobIds = jobs.map((job) => job.id);
-    const messages = await this.prisma.message.findMany({
-      where: { jobId: { in: jobIds } },
-      orderBy: { createdAt: 'desc' },
-      select: { jobId: true, professionalId: true, content: true, createdAt: true },
-    });
-
-    const lastByConversation: Record<string, LastMessage> = {};
-    for (const message of messages) {
-      const key = `${message.jobId}:${message.professionalId}`;
-      if (!lastByConversation[key]) {
-        lastByConversation[key] = {
-          content: message.content,
-          createdAt: message.createdAt,
-        };
-      }
-    }
+    // Última mensagem de cada job (o banco não tem professionalId na mensagem,
+    // então não dá para filtrar por conversa; usamos a última do job).
+    const lastMessageByJob = await this.lastMessagesByJob(
+      jobs.map((job) => job.id),
+    );
 
     const chats: ChatListItem[] = [];
 
     for (const job of jobs) {
+      const lastMessage = lastMessageByJob[job.id];
+      // Para cada candidatura aprovada, criar uma entrada de chat
       for (const candidatura of job.candidaturas) {
-        const key = `${job.id}:${candidatura.professionalId}`;
-        const lastMessage = lastByConversation[key];
         // ponytail: unreadCount hardcoded em 0 (sem tabela de leitura por usuário).
         const unreadCount = 0;
 
@@ -142,30 +126,15 @@ export class ListUserChatsUseCase {
       },
     });
 
-    if (candidaturas.length === 0) return [];
-
-    // Buscar últimas mensagens filtradas pela conversa deste profissional
-    const jobIds = candidaturas.map((cand) => cand.job.id);
-    const messages = await this.prisma.message.findMany({
-      where: { jobId: { in: jobIds }, professionalId },
-      orderBy: { createdAt: 'desc' },
-      select: { jobId: true, content: true, createdAt: true },
-    });
-
-    const lastByJob: Record<string, LastMessage> = {};
-    for (const message of messages) {
-      if (!lastByJob[message.jobId]) {
-        lastByJob[message.jobId] = {
-          content: message.content,
-          createdAt: message.createdAt,
-        };
-      }
-    }
+    // Última mensagem de cada job (mesma limitação acima).
+    const lastMessageByJob = await this.lastMessagesByJob(
+      candidaturas.map((cand) => cand.job.id),
+    );
 
     const chats: ChatListItem[] = [];
 
     for (const cand of candidaturas) {
-      const lastMessage = lastByJob[cand.job.id];
+      const lastMessage = lastMessageByJob[cand.job.id];
       // ponytail: unreadCount hardcoded em 0 (mesmo ceiling acima).
       const unreadCount = 0;
 
@@ -190,5 +159,31 @@ export class ListUserChatsUseCase {
     });
 
     return chats;
+  }
+
+  // Busca a última mensagem de cada job em uma única query (evita o N+1 de
+  // fazer findFirst por chat dentro do loop acima).
+  private async lastMessagesByJob(
+    jobIds: string[],
+  ): Promise<Record<string, LastMessage>> {
+    if (jobIds.length === 0) return {};
+
+    const messages = await this.prisma.message.findMany({
+      where: { jobId: { in: jobIds } },
+      orderBy: { createdAt: 'desc' },
+      select: { jobId: true, content: true, createdAt: true },
+    });
+
+    const lastByJob: Record<string, LastMessage> = {};
+    for (const message of messages) {
+      if (!lastByJob[message.jobId]) {
+        lastByJob[message.jobId] = {
+          content: message.content,
+          createdAt: message.createdAt,
+        };
+      }
+    }
+
+    return lastByJob;
   }
 }

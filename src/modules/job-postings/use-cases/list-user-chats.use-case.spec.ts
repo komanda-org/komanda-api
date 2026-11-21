@@ -25,7 +25,7 @@ describe('ListUserChatsUseCase', () => {
     (mock.mock.calls as FindManyArgs[][])[0][0];
 
   describe('restaurante', () => {
-    it('com 2 aprovados na mesma vaga devolve 2 conversas, cada uma com a sua última mensagem', async () => {
+    it('com 2 aprovados na mesma vaga devolve 2 conversas com a última mensagem do job', async () => {
       prisma.job.findMany.mockResolvedValue([
         {
           id: 'job-1',
@@ -36,17 +36,15 @@ describe('ListUserChatsUseCase', () => {
           ],
         },
       ]);
-      // distinct por (jobId, professionalId): a última de cada conversa
+      // Última mensagem do job (ordenada por createdAt desc, primeira = mais recente)
       prisma.message.findMany.mockResolvedValue([
         {
           jobId: 'job-1',
-          professionalId: 'prof-2',
           content: 'Fechado, Carlos!',
           createdAt: at('2026-11-20T12:00:00Z'),
         },
         {
           jobId: 'job-1',
-          professionalId: 'prof-1',
           content: 'Oi Marina',
           createdAt: at('2026-11-19T12:00:00Z'),
         },
@@ -76,8 +74,8 @@ describe('ListUserChatsUseCase', () => {
           otherPartyName: 'Marina Souza',
           otherPartyPhoto: null,
           otherPartyRole: Role.PROFISSIONAL,
-          lastMessageContent: 'Oi Marina',
-          lastMessageTime: at('2026-11-19T12:00:00Z'),
+          lastMessageContent: 'Fechado, Carlos!',
+          lastMessageTime: at('2026-11-20T12:00:00Z'),
           unreadCount: 0,
         },
       ]);
@@ -115,7 +113,6 @@ describe('ListUserChatsUseCase', () => {
       prisma.message.findMany.mockResolvedValue([
         {
           jobId: 'job-2',
-          professionalId: 'prof-2',
           content: 'Oi',
           createdAt: at('2026-11-18T12:00:00Z'),
         },
@@ -132,7 +129,7 @@ describe('ListUserChatsUseCase', () => {
   });
 
   describe('profissional', () => {
-    it('lista só as próprias conversas, com a última mensagem dele', async () => {
+    it('lista só as próprias conversas, com a última mensagem do job', async () => {
       prisma.candidatura.findMany.mockResolvedValue([
         {
           job: {
@@ -145,7 +142,6 @@ describe('ListUserChatsUseCase', () => {
       prisma.message.findMany.mockResolvedValue([
         {
           jobId: 'job-1',
-          professionalId: 'prof-1',
           content: 'Até amanhã',
           createdAt: at('2026-11-20T12:00:00Z'),
         },
@@ -156,10 +152,9 @@ describe('ListUserChatsUseCase', () => {
         userRole: Role.PROFISSIONAL,
       });
 
-      // A busca de mensagens é restrita à conversa dele
+      // A busca de mensagens é por jobId (sem filtro de professionalId no banco)
       expect(firstArgs(prisma.message.findMany).where).toEqual({
         jobId: { in: ['job-1'] },
-        professionalId: 'prof-1',
       });
       expect(chats).toEqual([
         {
