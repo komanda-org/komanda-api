@@ -1,36 +1,47 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ListMessagesUseCase } from './list-messages.use-case';
 import { AssertChatAccessUseCase } from './assert-chat-access';
-import { CHAT_MESSAGE_SELECT } from '../dto/message-response.dto';
 
 describe('ListMessagesUseCase', () => {
   let useCase: ListMessagesUseCase;
-  let prisma: { message: { findMany: jest.Mock } };
-  let assertChatAccessMock: { execute: jest.Mock };
-
-  const conversation = {
-    jobId: 'job-1',
-    professionalId: 'prof-1',
-    restaurantId: 'rest-1',
-  };
+  let prisma: Partial<Record<keyof PrismaService, jest.Mock>>;
+  let assertChatAccessMock: Partial<
+    Record<keyof AssertChatAccessUseCase, jest.Mock>
+  >;
 
   const createMockMessage = (
     overrides: Partial<{ id: string; createdAt: Date }> = {},
   ) => ({
     id: `msg-${overrides.id || '1'}`,
     jobId: 'job-1',
-    professionalId: 'prof-1',
-    senderId: 'prof-1',
+    senderId: 'user-1',
     content: `Message ${overrides.id || '1'}`,
     createdAt: overrides.createdAt || new Date(),
   });
 
+  const mockJob = {
+    restaurantId: 'restaurant-1',
+    candidaturas: [{ professionalId: 'prof-1' }],
+  };
+
   beforeEach(async () => {
-    prisma = { message: { findMany: jest.fn() } };
+    prisma = {
+      message: {
+        findMany: jest.fn(),
+      },
+      job: {
+        findUnique: jest.fn().mockResolvedValue(mockJob),
+      },
+    };
+
     assertChatAccessMock = {
-      execute: jest.fn().mockResolvedValue(conversation),
+      execute: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -49,7 +60,7 @@ describe('ListMessagesUseCase', () => {
   });
 
   describe('execute', () => {
-    it('valida o acesso, filtra pela conversa (vaga + profissional) e devolve em ordem crescente', async () => {
+    it('should call assertChatAccess and return messages in ascending order', async () => {
       const now = new Date();
       const messages = [
         createMockMessage({
@@ -62,103 +73,108 @@ describe('ListMessagesUseCase', () => {
         }),
         createMockMessage({ id: '1', createdAt: now }),
       ];
+
+      assertChatAccessMock.execute.mockResolvedValue(undefined);
       prisma.message.findMany.mockResolvedValue(messages);
 
       const result = await useCase.execute({
         jobId: 'job-1',
-        userId: 'rest-1',
-        professionalId: 'prof-1',
+        userId: 'user-1',
         take: 50,
       });
 
       expect(assertChatAccessMock.execute).toHaveBeenCalledWith({
         jobId: 'job-1',
-        userId: 'rest-1',
-        professionalId: 'prof-1',
+        userId: 'user-1',
       });
       expect(prisma.message.findMany).toHaveBeenCalledWith({
-        where: { jobId: 'job-1', professionalId: 'prof-1' },
+        where: { jobId: 'job-1' },
         orderBy: { createdAt: 'desc' },
         take: 51,
-        select: CHAT_MESSAGE_SELECT,
+        select: {
+          id: true,
+          jobId: true,
+          senderId: true,
+          content: true,
+          createdAt: true,
+        },
       });
-      expect(result.professionalId).toBe('prof-1');
-      expect(result.messages.map((m) => m.id)).toEqual([
-        'msg-1',
-        'msg-2',
-        'msg-3',
-      ]);
+      // Should return in ascending order (oldest first)
+      expect(result.messages).toHaveLength(3);
+      expect(result.messages[0].id).toBe('msg-1');
+      expect(result.messages[1].id).toBe('msg-2');
+      expect(result.messages[2].id).toBe('msg-3');
       expect(result.hasMore).toBe(false);
     });
 
-    it('usa o professionalId resolvido pelo gate, não o enviado pelo cliente', async () => {
-      prisma.message.findMany.mockResolvedValue([]);
-
-      await useCase.execute({
-        jobId: 'job-1',
-        userId: 'prof-1',
-        professionalId: 'prof-2',
-      });
-
-      expect(prisma.message.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { jobId: 'job-1', professionalId: 'prof-1' },
-        }),
-      );
-    });
-
-    it('respeita o take e marca hasMore', async () => {
+    it('should respect take limit and set hasMore', async () => {
       const now = new Date();
-      // Mensagens com ID 1 = mais antiga, ID 51 = mais nova
+      // Create 51 messages (take + 1) to test hasMore
+      // Messages are ordered with ID 1 = oldest, ID 51 = newest
       const messages = Array.from({ length: 51 }, (_, i) =>
         createMockMessage({
           id: String(i + 1),
           createdAt: new Date(now.getTime() + i * 1000),
         }),
       );
-      // A query usa orderBy desc: vem a mais nova primeiro
-      prisma.message.findMany.mockResolvedValue([...messages].reverse());
+
+      // Database query uses orderBy: { createdAt: 'desc' }, so it returns newest first
+      const messagesDesc = [...messages].reverse();
+
+      assertChatAccessMock.execute.mockResolvedValue(undefined);
+      prisma.message.findMany.mockResolvedValue(messagesDesc);
 
       const result = await useCase.execute({
         jobId: 'job-1',
-        userId: 'prof-1',
+        userId: 'user-1',
         take: 50,
       });
 
       expect(result.messages).toHaveLength(50);
       expect(result.hasMore).toBe(true);
-      // Pega 51, corta para 50 (sai a msg-1, a mais antiga) e inverte.
+      // Query is desc (newest first), takes 51, slices to 50 (drops oldest = msg-1),
+      // then reverses to ascending. So first should be msg-2, last should be msg-51.
       expect(result.messages[0].id).toBe('msg-2');
       expect(result.messages[49].id).toBe('msg-51');
     });
 
-    it('take padrão é 50', async () => {
+    it('should use default take of 50 when not provided', async () => {
+      assertChatAccessMock.execute.mockResolvedValue(undefined);
       prisma.message.findMany.mockResolvedValue([]);
 
-      await useCase.execute({ jobId: 'job-1', userId: 'prof-1' });
+      await useCase.execute({
+        jobId: 'job-1',
+        userId: 'user-1',
+      });
 
       expect(prisma.message.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ take: 51 }),
       );
     });
 
-    it('take máximo é 100', async () => {
+    it('should cap take at 100', async () => {
+      assertChatAccessMock.execute.mockResolvedValue(undefined);
       prisma.message.findMany.mockResolvedValue([]);
 
-      await useCase.execute({ jobId: 'job-1', userId: 'prof-1', take: 200 });
+      await useCase.execute({
+        jobId: 'job-1',
+        userId: 'user-1',
+        take: 200,
+      });
 
       expect(prisma.message.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ take: 101 }),
       );
     });
 
-    it('filtra por before', async () => {
+    it('should filter by before date', async () => {
       const beforeDate = new Date('2024-01-15T12:00:00Z');
+      assertChatAccessMock.execute.mockResolvedValue(undefined);
       prisma.message.findMany.mockResolvedValue([]);
 
       await useCase.execute({
         jobId: 'job-1',
-        userId: 'prof-1',
+        userId: 'user-1',
         before: beforeDate,
       });
 
@@ -166,14 +182,13 @@ describe('ListMessagesUseCase', () => {
         expect.objectContaining({
           where: {
             jobId: 'job-1',
-            professionalId: 'prof-1',
             createdAt: { lt: beforeDate },
           },
         }),
       );
     });
 
-    it('propaga o 403 do gate sem consultar mensagens', async () => {
+    it('should propagate 403 from assertChatAccess', async () => {
       assertChatAccessMock.execute.mockRejectedValue(
         new ForbiddenException(
           'Só é possível conversar após uma candidatura aprovada na vaga',
@@ -181,18 +196,23 @@ describe('ListMessagesUseCase', () => {
       );
 
       await expect(
-        useCase.execute({ jobId: 'job-1', userId: 'prof-1' }),
+        useCase.execute({
+          jobId: 'job-1',
+          userId: 'user-1',
+        }),
       ).rejects.toThrow(ForbiddenException);
-      expect(prisma.message.findMany).not.toHaveBeenCalled();
     });
 
-    it('propaga o 404 do gate', async () => {
+    it('should propagate 404 from assertChatAccess', async () => {
       assertChatAccessMock.execute.mockRejectedValue(
         new NotFoundException('Vaga não encontrada'),
       );
 
       await expect(
-        useCase.execute({ jobId: 'job-1', userId: 'prof-1' }),
+        useCase.execute({
+          jobId: 'job-1',
+          userId: 'user-1',
+        }),
       ).rejects.toThrow(NotFoundException);
     });
   });

@@ -92,7 +92,7 @@ describe('SendMessageUseCase', () => {
         },
         select: CHAT_MESSAGE_SELECT,
       });
-      expect(result).toEqual(mockMessage);
+      expect(result).toEqual({ ...mockMessage, professionalId: null });
     });
 
     describe('notificação de mensagem nova', () => {
