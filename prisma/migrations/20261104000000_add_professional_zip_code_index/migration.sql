@@ -1,2 +1,2 @@
 -- CreateIndex
-CREATE INDEX "professionals_zip_code_idx" ON "professionals"("zip_code");
+CREATE INDEX "professionals_zipCode_idx" ON "professionals"("zipCode");

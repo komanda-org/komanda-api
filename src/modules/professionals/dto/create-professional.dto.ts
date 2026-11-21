@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsZipCode } from 'src/common/validators/is-zip-code';
 import {
   IsArray,
   IsEmail,
@@ -100,11 +101,6 @@ export class CreateProfessionalDto {
   })
   neighborhood?: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  @Matches(/^\d{5}-?\d{3}$/, {
-    message: 'CEP deve estar no formato 00000-000',
-  })
-  zipCode?: string;
+  @IsZipCode()
+  zipCode!: string;
 }

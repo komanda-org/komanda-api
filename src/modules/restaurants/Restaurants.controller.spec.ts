@@ -3,6 +3,8 @@ import { Role } from '@prisma/client';
 import { RestaurantsController } from './Restaurants.controller';
 import { RestaurantResponseDto } from './dto/restaurant-response.dto';
 import { RegisterRestaurantUseCase } from './use-cases/register-restaurant.use-case';
+import { GetRestaurantPublicProfileUseCase } from './use-cases/get-restaurant-public-profile.use-case';
+import { AuthGuard } from 'src/auth/auth.guard';
 
 describe('RestaurantsController', () => {
   let controller: RestaurantsController;
@@ -18,8 +20,15 @@ describe('RestaurantsController', () => {
             execute: jest.fn(),
           },
         },
+        {
+          provide: GetRestaurantPublicProfileUseCase,
+          useValue: { execute: jest.fn() },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<RestaurantsController>(RestaurantsController);
     registerRestaurantUseCase = module.get<RegisterRestaurantUseCase>(

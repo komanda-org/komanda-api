@@ -29,6 +29,31 @@ import { SendMessageDto } from './dto/send-message.dto';
 import { JoinChatDto } from './dto/join-chat.dto';
 import { ListMessagesDto } from './dto/list-messages.dto';
 import { MessageResponseDto } from './dto/message-response.dto';
+import { LeaveChatDto } from './dto/leave-chat.dto';
+import { Role } from '@prisma/client';
+import { PROFESSIONAL_ID_REQUIRED_MESSAGE } from './use-cases/assert-chat-access';
+
+/** Conversa = vaga + profissional (cada aprovado tem a sua com o restaurante). */
+interface Conversation {
+  jobId: string;
+  professionalId: string;
+}
+
+const conversationKey = (c: Conversation) => `${c.jobId}:${c.professionalId}`;
+const roomOf = (c: Conversation) => `chat:${conversationKey(c)}`;
+
+/** O que o gateway guarda no socket: o usuário do token e as conversas abertas. */
+interface ChatSocketData {
+  user?: { id: string; role: Role };
+  chats?: Conversation[];
+}
+
+const dataOf = (client: Socket) => client.data as ChatSocketData;
+
+const MISSING_PROFESSIONAL_ERROR = {
+  statusCode: 400,
+  message: PROFESSIONAL_ID_REQUIRED_MESSAGE,
+};
 
 // Rate limiting por socket: janela deslizante 20 eventos/10s
 interface RateLimitEntry {
@@ -112,7 +137,7 @@ export class MessagesGateway
 
   private readonly logger = new Logger(MessagesGateway.name);
   private readonly rateLimits = new Map<string, RateLimitEntry>();
-  /** jobId -> userIds na room: alimenta o chat:presence (quem esta online). */
+  /** conversa (jobId:professionalId) -> userIds na sala: alimenta o chat:presence. */
   private readonly roomUsers = new Map<string, Set<string>>();
 
   constructor(
@@ -155,43 +180,68 @@ export class MessagesGateway
     );
     this.rateLimits.delete(client.id);
 
-    const jobs: string[] = client.data.jobs ?? [];
-    for (const jobId of jobs) {
-      this.leaveRoom(jobId, client.data.user?.id);
+    const chats = dataOf(client).chats ?? [];
+    for (const conversation of chats) {
+      this.leaveRoom(conversation, dataOf(client).user?.id);
     }
+  }
+
+  /**
+   * De quem é a conversa pedida. Profissional: sempre ele mesmo (ignora o que
+   * o cliente mandou). Restaurante: precisa informar professionalId; sem ele,
+   * emite chat:error 400 e devolve null. O use-case revalida tudo no banco.
+   */
+  private conversationOf(
+    client: Socket,
+    data: { jobId: string; professionalId?: string },
+  ): Conversation | null {
+    const user = dataOf(client).user;
+    if (user?.role === Role.PROFISSIONAL) {
+      return { jobId: data.jobId, professionalId: user.id };
+    }
+    if (!data.professionalId) {
+      client.emit('chat:error', MISSING_PROFESSIONAL_ERROR);
+      return null;
+    }
+    return { jobId: data.jobId, professionalId: data.professionalId };
   }
 
   /**
    * Presenca: so marca "Conectado" quando HA OUTRA PESSOA na room (>= 2
    * userIds distintos). Entrar sozinho nao emite nada.
    */
-  private joinRoom(jobId: string, userId: string): void {
-    let users = this.roomUsers.get(jobId);
+  private joinRoom(conversation: Conversation, userId: string): void {
+    const key = conversationKey(conversation);
+    let users = this.roomUsers.get(key);
     if (!users) {
       users = new Set();
-      this.roomUsers.set(jobId, users);
+      this.roomUsers.set(key, users);
     }
     users.add(userId);
 
     if (users.size >= 2) {
       this.server
-        .to(`job:${jobId}`)
-        .emit('chat:presence', { jobId, online: true });
+        .to(roomOf(conversation))
+        .emit('chat:presence', { ...conversation, online: true });
     }
   }
 
-  private leaveRoom(jobId: string, userId: string | undefined): void {
+  private leaveRoom(
+    conversation: Conversation,
+    userId: string | undefined,
+  ): void {
     if (!userId) return;
-    const users = this.roomUsers.get(jobId);
+    const key = conversationKey(conversation);
+    const users = this.roomUsers.get(key);
     if (!users) return;
 
     users.delete(userId);
     if (users.size === 0) {
-      this.roomUsers.delete(jobId);
+      this.roomUsers.delete(key);
     } else if (users.size < 2) {
       this.server
-        .to(`job:${jobId}`)
-        .emit('chat:presence', { jobId, online: false });
+        .to(roomOf(conversation))
+        .emit('chat:presence', { ...conversation, online: false });
     }
   }
 
@@ -233,22 +283,31 @@ export class MessagesGateway
       };
     }
 
+    const requested = this.conversationOf(client, data);
+    if (!requested) return { ok: false, error: MISSING_PROFESSIONAL_ERROR };
+
     try {
       const userId = client.data.user.id;
       const result = await this.listMessagesUseCase.execute({
         jobId: data.jobId,
         userId,
+        professionalId: requested.professionalId,
         take: data.take,
       });
 
-      // Entra na room apenas após validação bem-sucedida
-      client.join(`job:${data.jobId}`);
-      const jobs: string[] = client.data.jobs ?? [];
-      if (!jobs.includes(data.jobId)) {
-        jobs.push(data.jobId);
-        client.data.jobs = jobs;
+      // Entra na sala apenas após validação bem-sucedida
+      const conversation: Conversation = {
+        jobId: data.jobId,
+        professionalId: result.professionalId,
+      };
+      client.join(roomOf(conversation));
+      const chats = dataOf(client).chats ?? [];
+      const key = conversationKey(conversation);
+      if (!chats.some((c) => conversationKey(c) === key)) {
+        chats.push(conversation);
+        dataOf(client).chats = chats;
       }
-      this.joinRoom(data.jobId, userId);
+      this.joinRoom(conversation, userId);
 
       return {
         ok: true,
@@ -285,7 +344,7 @@ export class MessagesGateway
   @SubscribeMessage('chat:leave')
   async handleLeave(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { jobId: string },
+    @MessageBody() data: LeaveChatDto,
   ) {
     if (!this.checkRateLimit(client)) {
       this.emitRateLimitError(client);
@@ -295,10 +354,14 @@ export class MessagesGateway
       };
     }
 
-    client.leave(`job:${data.jobId}`);
-    const jobs: string[] = client.data.jobs ?? [];
-    client.data.jobs = jobs.filter((j) => j !== data.jobId);
-    this.leaveRoom(data.jobId, client.data.user?.id);
+    const conversation = this.conversationOf(client, data);
+    if (!conversation) return { ok: false, error: MISSING_PROFESSIONAL_ERROR };
+
+    client.leave(roomOf(conversation));
+    const chats = dataOf(client).chats ?? [];
+    const key = conversationKey(conversation);
+    dataOf(client).chats = chats.filter((c) => conversationKey(c) !== key);
+    this.leaveRoom(conversation, dataOf(client).user?.id);
     return { ok: true };
   }
 
@@ -315,19 +378,25 @@ export class MessagesGateway
       };
     }
 
+    const requested = this.conversationOf(client, data);
+    if (!requested) return { ok: false, error: MISSING_PROFESSIONAL_ERROR };
+
     try {
       const userId = client.data.user.id;
       const message = await this.sendMessageUseCase.execute({
         jobId: data.jobId,
         senderId: userId,
+        professionalId: requested.professionalId,
         content: data.content,
+        // Quem está na sala vê a mensagem ao vivo: não precisa de notificação.
+        onlineUserIds: this.roomUsers.get(conversationKey(requested)),
       });
 
       const messageDto = new MessageResponseDto(message);
 
       // Ack para o remetente (idempotência / UI otimista)
-      // Broadcast para todos na room (inclusive o remetente)
-      this.server.to(`job:${data.jobId}`).emit('chat:message', messageDto);
+      // Broadcast só para a sala desta conversa (inclusive o remetente)
+      this.server.to(roomOf(message)).emit('chat:message', messageDto);
 
       return { ok: true, message: messageDto };
     } catch (error) {
@@ -369,12 +438,16 @@ export class MessagesGateway
       };
     }
 
+    const requested = this.conversationOf(client, data);
+    if (!requested) return { ok: false, error: MISSING_PROFESSIONAL_ERROR };
+
     try {
       const userId = client.data.user.id;
       const before = data.before ? new Date(data.before) : undefined;
       const result = await this.listMessagesUseCase.execute({
         jobId: data.jobId,
         userId,
+        professionalId: requested.professionalId,
         before,
         take: data.take,
       });

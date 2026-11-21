@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "postinstall": "if [ -x node_modules/.bin/prisma ]; then prisma generate; else echo 'prisma CLI ausente (instalação de produção), pulando generate'; fi",
+    "postinstall": "node -e \"try{require.resolve('prisma/package.json')}catch{console.log('prisma CLI ausente (instalação de produção), pulando generate');process.exit(0)}require('child_process').execSync('prisma generate',{stdio:'inherit'})\"",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -25,7 +25,8 @@
     "db:migrate:prod": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

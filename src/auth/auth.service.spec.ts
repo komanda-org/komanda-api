@@ -11,8 +11,8 @@ import {
 import { createMockAuthCryptoService } from './__mocks__/auth-crypto.mock';
 import { createMockPrismaService } from './__mocks__/prisma.mock';
 import { AuthCryptoService } from './auth-crypto.service';
-import { AuthService } from './auth.service';
-import { UnauthorizedException, UserNotFoundException } from './exceptions';
+import { AuthService, INVALID_CREDENTIALS_MESSAGE } from './auth.service';
+import { UnauthorizedException } from './exceptions';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -50,20 +50,20 @@ describe('AuthService', () => {
       expect(result.user.role).toBe(USER_FIXTURE.role);
     });
 
-    it('should throw UserNotFoundException when user not found', async () => {
+    it('should throw generic UnauthorizedException when user not found', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(null);
 
       await expect(service.login(LOGIN_DTO_INVALID_EMAIL)).rejects.toThrow(
-        UserNotFoundException,
+        new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE),
       );
     });
 
-    it('should throw UnauthorizedException when password is incorrect', async () => {
+    it('should throw generic UnauthorizedException when password is incorrect', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(USER_FIXTURE);
       mockAuthCrypto.compare.mockResolvedValue(false);
 
       await expect(service.login(LOGIN_DTO_INVALID_PASS)).rejects.toThrow(
-        new UnauthorizedException('Invalid password'),
+        new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE),
       );
 
       expect(mockAuthCrypto.compare).toHaveBeenCalledTimes(1);
@@ -73,24 +73,32 @@ describe('AuthService', () => {
       );
     });
 
-    it('should throw UnauthorizedException when user account is deleted', async () => {
+    it('should treat a deleted account like a missing one', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(USER_FIXTURE_DELETED);
 
       await expect(service.login(LOGIN_DTO_FIXTURE)).rejects.toThrow(
-        new UnauthorizedException('Conta não encontrada'),
+        new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE),
       );
 
       expect(mockAuthCrypto.compare).not.toHaveBeenCalled();
     });
 
-    it('should throw UnauthorizedException when user account is inactive', async () => {
+    it('should report inactive account only after the password matches', async () => {
       mockPrisma.user.findUnique.mockResolvedValue(USER_FIXTURE_INACTIVE);
+      mockAuthCrypto.compare.mockResolvedValue(true);
 
       await expect(service.login(LOGIN_DTO_FIXTURE)).rejects.toThrow(
-        new UnauthorizedException('User account is inactive'),
+        new UnauthorizedException('Conta inativa'),
       );
+    });
 
-      expect(mockAuthCrypto.compare).not.toHaveBeenCalled();
+    it('should not reveal an inactive account to a wrong password', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(USER_FIXTURE_INACTIVE);
+      mockAuthCrypto.compare.mockResolvedValue(false);
+
+      await expect(service.login(LOGIN_DTO_FIXTURE)).rejects.toThrow(
+        new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE),
+      );
     });
 
     it('should prioritize deleted account validation over inactive validation', async () => {
@@ -101,7 +109,7 @@ describe('AuthService', () => {
       });
 
       await expect(service.login(LOGIN_DTO_FIXTURE)).rejects.toThrow(
-        new UnauthorizedException('Conta não encontrada'),
+        new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE),
       );
 
       expect(mockAuthCrypto.compare).not.toHaveBeenCalled();

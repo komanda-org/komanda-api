@@ -38,7 +38,11 @@ describe('SearchProfessionalsUseCase', () => {
 
       expect(mockPrisma.professional.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { active: true, deletedAt: null },
+          where: {
+            active: true,
+            deletedAt: null,
+            user: { active: true, deletedAt: null },
+          },
           skip: 0,
           take: 20,
         }),
@@ -72,6 +76,7 @@ describe('SearchProfessionalsUseCase', () => {
           where: {
             active: true,
             deletedAt: null,
+            user: { active: true, deletedAt: null },
             mainRole: { contains: 'cozinheiro', mode: 'insensitive' },
           },
         }),
@@ -80,6 +85,7 @@ describe('SearchProfessionalsUseCase', () => {
         where: {
           active: true,
           deletedAt: null,
+          user: { active: true, deletedAt: null },
           mainRole: { contains: 'cozinheiro', mode: 'insensitive' },
         },
       });

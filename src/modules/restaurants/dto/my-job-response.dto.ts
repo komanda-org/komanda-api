@@ -1,4 +1,4 @@
-import { ContractType, JobStatus } from '@prisma/client';
+import { ContractType, JobStatus, JobShift } from '@prisma/client';
 
 export interface MyJobDto {
   id: string;
@@ -7,7 +7,7 @@ export interface MyJobDto {
   requirements: string | null;
   salary: number | null;
   contractType: ContractType;
-  shift: string | null;
+  shifts: JobShift[];
   status: JobStatus;
   urgent: boolean;
   createdAt: Date;

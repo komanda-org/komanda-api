@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
-  extensions = [pg_trgm]
+  extensions = [pg_trgm, unaccent]
 }
 
 enum PlanType {
@@ -24,6 +24,31 @@ enum ContractType {
   PJ
   FREELANCER
   ESTAGIO
+}
+
+// Turnos da vaga. Uma vaga pode ter vários (ex.: MANHA + TARDE); INTEGRAL
+// já cobre o dia todo e não se combina com os outros (regra no DTO).
+enum JobShift {
+  MANHA
+  TARDE
+  NOITE
+  INTEGRAL
+}
+
+// Disponibilidade declarada no perfil do profissional. Diferente de
+// ContractType (vaga): inclui TEMPORARIO e não tem ESTAGIO.
+enum WorkModel {
+  CLT
+  PJ
+  FREELANCER
+  TEMPORARIO
+}
+
+enum Mobility {
+  LOCAL
+  REGIONAL
+  NACIONAL
+  INTERNACIONAL
 }
 
 enum JobStatus {
@@ -73,25 +98,48 @@ model User {
 }
 
 model Professional {
-  userId            String  @id @map("user_id") @db.VarChar(36)
+  userId            String                   @id @map("user_id") @db.VarChar(36)
   fullName          String
   profilePhoto      String?
   mainRole          String
   interestedRoles   String[]
-  experienceSummary String? @map("experience_summary") @db.Text
+  experienceSummary String?                  @map("experience_summary") @db.Text
   neighborhood      String?
   zipCode           String?
   averageRating     Float? /// @min 0.0 @max 5.0
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-  deletedAt       DateTime?     @map("deleted_at")
-  active          Boolean       @default(true)
-  user            User          @relation(fields: [userId], references: [id])
-  candidaturas    Candidatura[]
-  avaliacoes Avaliacao[]
+  specialties       String[]                 @default([])
+  city              String?
+  state             String?                  @db.VarChar(2) /// UF
+  workModels        WorkModel[]              @default([]) @map("work_models")
+  mobility          Mobility?
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+  deletedAt         DateTime?                @map("deleted_at")
+  active            Boolean                  @default(true)
+  user              User                     @relation(fields: [userId], references: [id])
+  candidaturas      Candidatura[]
+  avaliacoes        Avaliacao[]
+  experiences       ProfessionalExperience[]
+  messages          Message[]
 
   @@index([zipCode])
   @@map("professionals")
+}
+
+model ProfessionalExperience {
+  id             String       @id @default(uuid()) @db.VarChar(36)
+  professionalId String       @map("professional_id") @db.VarChar(36)
+  professional   Professional @relation(fields: [professionalId], references: [userId], onDelete: Cascade)
+  company        String
+  role           String
+  startDate      DateTime     @map("start_date") @db.Date
+  endDate        DateTime?    @map("end_date") @db.Date /// null = emprego atual
+  description    String?      @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@index([professionalId])
+  @@map("professional_experiences")
 }
 
 model PasswordResetToken {
@@ -107,24 +155,25 @@ model PasswordResetToken {
 }
 
 model Restaurant {
-  userId         String    @id @map("user_id") @db.VarChar(36)
+  userId         String      @id @map("user_id") @db.VarChar(36)
   restaurantName String
-  cnpj           String    @unique
-  cuisineType    String    @map("cuisine_type")
+  cnpj           String      @unique
+  cuisineType    String      @map("cuisine_type")
   description    String
   address        String
   phone          String
-  zipCode        String    @map("zip_code")
-  logoUrl        String?   @map("logo_url")
+  /// null = restaurante itinerante (só eventos), sem endereço fixo
+  zipCode        String?     @map("zip_code")
+  logoUrl        String?     @map("logo_url")
   averageRating  Float? /// @min 0.0 @max 5.0
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  deletedAt      DateTime? @map("deleted_at")
-  active         Boolean   @default(true)
-  plan           PlanType  @default(FREE)
-  user           User      @relation(fields: [userId], references: [id])
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  deletedAt      DateTime?   @map("deleted_at")
+  active         Boolean     @default(true)
+  plan           PlanType    @default(FREE)
+  user           User        @relation(fields: [userId], references: [id])
   jobs           Job[]
-  avaliacoes Avaliacao[]
+  avaliacoes     Avaliacao[]
 
   @@map("restaurants")
 }
@@ -136,7 +185,8 @@ model Job {
   requirements String?      @db.Text
   salary       Decimal?     @db.Decimal(10, 2)
   contractType ContractType @map("contract_type")
-  shift        String?      @db.VarChar(30)
+  /// Lista vazia = turno não informado
+  shifts       JobShift[]   @default([])
   status       JobStatus    @default(ABERTA)
   urgent       Boolean      @default(false)
   closedAt     DateTime?    @map("closed_at")
@@ -206,7 +256,6 @@ model Avaliacao {
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
   @@unique([professionalId, restaurantId, jobId, avaliadorRole])
-
   @@index([professionalId])
   @@index([restaurantId])
   @@index([jobId])
@@ -233,15 +282,20 @@ model Denuncia {
 }
 
 model Message {
-  id        String   @id @default(uuid()) @db.VarChar(36)
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  jobId     String   @map("job_id") @db.VarChar(36)
-  sender    User     @relation(fields: [senderId], references: [id])
-  senderId  String   @map("sender_id") @db.VarChar(36)
-  content   String   @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
+  id             String       @id @default(uuid()) @db.VarChar(36)
+  job            Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId          String       @map("job_id") @db.VarChar(36)
+  sender         User         @relation(fields: [senderId], references: [id])
+  senderId       String       @map("sender_id") @db.VarChar(36)
+  /// Conversa = vaga + profissional: com 2 aprovados na mesma vaga, cada um
+  /// tem a sua conversa privada com o restaurante.
+  professional   Professional @relation(fields: [professionalId], references: [userId], onDelete: Cascade)
+  professionalId String       @map("professional_id") @db.VarChar(36)
+  content        String       @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
 
-  @@index([jobId, createdAt])
+  @@index([jobId, professionalId, createdAt])
+  @@index([professionalId])
   @@index([senderId])
   @@map("messages")
 }

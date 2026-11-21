@@ -11,6 +11,8 @@ import request from 'supertest';
 import { CandidaturaStatus, JobStatus, Prisma, Role } from '@prisma/client';
 import { envValidationSchema } from '../src/config/env.validation';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { activeAccountsLookup } from './support/active-accounts';
+import { VISIBLE_RESTAURANT_WHERE } from '../src/modules/jobs/job.mapper';
 import { AuthModule } from '../src/auth/auth.module';
 import { JobPostingsModule } from '../src/modules/job-postings/job-postings.module';
 
@@ -97,7 +99,11 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
     prisma = {
       job: {
         findUnique: jest.fn(),
+        // POST de candidatura: findFirst com o filtro do restaurante visível.
+        findFirst: jest.fn(),
       },
+      // Avisos de candidatura nova e de decisão (JobEventNotifier).
+      notificacao: { create: jest.fn() },
       candidatura: {
         findUnique: jest.fn(),
         findMany: jest.fn(),
@@ -132,6 +138,10 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
 
     app = moduleFixture.createNestApplication();
     jwtService = moduleFixture.get<JwtService>(JwtService);
+    // O AuthGuard confere a conta no banco (ver test/support/active-accounts).
+    Object.assign(prisma, {
+      user: { findUnique: activeAccountsLookup(jwtService).findUnique },
+    });
     throttlerStorage =
       moduleFixture.get<ThrottlerStorageService>(ThrottlerStorage);
     app.setGlobalPrefix('api');
@@ -161,8 +171,12 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
 
   describe('POST /jobs/:id/applications — candidatar-se a uma vaga', () => {
     it('should return 201 when a professional applies to an open job', async () => {
-      prisma.job.findUnique.mockResolvedValue(openJob);
-      prisma.candidatura.create.mockResolvedValue(application);
+      prisma.job.findFirst.mockResolvedValue(openJob);
+      prisma.candidatura.create.mockResolvedValue({
+        ...application,
+        job: openJob,
+        professional: { fullName: 'John Doe' },
+      });
 
       const response = await request(app.getHttpServer())
         .post('/api/jobs/job-1/applications')
@@ -174,9 +188,16 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
       expect(response.body.jobId).toBe('job-1');
       expect(response.body.professionalId).toBe('prof-1');
 
-      expect(prisma.job.findUnique).toHaveBeenCalledWith({
-        where: { id: 'job-1' },
+      expect(prisma.job.findFirst).toHaveBeenCalledWith({
+        where: { id: 'job-1', restaurant: VISIBLE_RESTAURANT_WHERE },
         select: { status: true, active: true, deletedAt: true },
+      });
+      expect(prisma.notificacao!.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'rest-1',
+          titulo: 'Nova candidatura: Chef',
+          mensagem: 'John Doe se candidatou à vaga "Chef".',
+        },
       });
       expect(prisma.candidatura.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -201,7 +222,7 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
     });
 
     it('should return 404 when the job does not exist', async () => {
-      prisma.job.findUnique.mockResolvedValue(null);
+      prisma.job.findFirst.mockResolvedValue(null);
 
       await request(app.getHttpServer())
         .post('/api/jobs/inexistente/applications')
@@ -211,7 +232,7 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
     });
 
     it('should return 422 when the job is paused (not open for applications)', async () => {
-      prisma.job.findUnique.mockResolvedValue(pausedJob);
+      prisma.job.findFirst.mockResolvedValue(pausedJob);
 
       await request(app.getHttpServer())
         .post('/api/jobs/job-2/applications')
@@ -221,7 +242,7 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
     });
 
     it('should return 422 when the job is inactive', async () => {
-      prisma.job.findUnique.mockResolvedValue(inactiveJob);
+      prisma.job.findFirst.mockResolvedValue(inactiveJob);
 
       await request(app.getHttpServer())
         .post('/api/jobs/job-3/applications')
@@ -231,7 +252,7 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
     });
 
     it('should return 404 when the job is soft-deleted', async () => {
-      prisma.job.findUnique.mockResolvedValue(deletedJob);
+      prisma.job.findFirst.mockResolvedValue(deletedJob);
 
       await request(app.getHttpServer())
         .post('/api/jobs/job-1/applications')
@@ -257,7 +278,7 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
     });
 
     it('should return 409 when the professional already applied to the job', async () => {
-      prisma.job.findUnique.mockResolvedValue(openJob);
+      prisma.job.findFirst.mockResolvedValue(openJob);
       const alreadyApplied = new Prisma.PrismaClientKnownRequestError(
         'Unique constraint',
         { code: 'P2002' },
@@ -351,7 +372,11 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
     it('should return 200 and approve the application', async () => {
       prisma.candidatura.findUnique.mockResolvedValue({
         ...application,
-        job: { ...openJob, restaurantId: 'rest-1' },
+        job: {
+          ...openJob,
+          restaurantId: 'rest-1',
+          restaurant: { restaurantName: 'Bistrô Teste' },
+        },
       });
       prisma.candidatura.update.mockResolvedValue(approved);
 
@@ -366,12 +391,24 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
         where: { id: 'app-1' },
         data: { status: CandidaturaStatus.APROVADA },
       });
+      expect(prisma.notificacao!.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'prof-1',
+          titulo: 'Candidatura aprovada: Chef',
+          mensagem:
+            'Bistrô Teste aprovou sua candidatura. O chat com o restaurante já está liberado.',
+        },
+      });
     });
 
     it('should return 200 and reject the application', async () => {
       prisma.candidatura.findUnique.mockResolvedValue({
         ...application,
-        job: { ...openJob, restaurantId: 'rest-1' },
+        job: {
+          ...openJob,
+          restaurantId: 'rest-1',
+          restaurant: { restaurantName: 'Bistrô Teste' },
+        },
       });
       prisma.candidatura.update.mockResolvedValue(rejected);
 
@@ -454,7 +491,11 @@ describe('Candidaturas E2E (fluxos CR-TI)', () => {
       const terminal = { ...application, status: CandidaturaStatus.APROVADA };
       prisma.candidatura.findUnique.mockResolvedValue({
         ...terminal,
-        job: { ...openJob, restaurantId: 'rest-1' },
+        job: {
+          ...openJob,
+          restaurantId: 'rest-1',
+          restaurant: { restaurantName: 'Bistrô Teste' },
+        },
       });
 
       await request(app.getHttpServer())

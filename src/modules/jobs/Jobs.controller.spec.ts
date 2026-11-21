@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ContractType, JobStatus } from '@prisma/client';
+import { ContractType, JobStatus, JobShift } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { JobsController } from './Jobs.controller';
+import { GetJobByIdUseCase } from './use-cases/get-job-by-id.use-case';
 import { SearchJobsUseCase } from './use-cases/search-jobs.use-case';
 
 describe('JobsController', () => {
@@ -18,7 +19,7 @@ describe('JobsController', () => {
         requirements: 'Experiência mínima de 2 anos',
         salary: '3000.00',
         contractType: ContractType.CLT,
-        shift: 'NOITE',
+        shifts: [JobShift.NOITE],
         status: JobStatus.ABERTA,
         urgent: false,
         restaurantId: 'restaurant-1',
@@ -43,6 +44,10 @@ describe('JobsController', () => {
           useValue: {
             execute: jest.fn(),
           },
+        },
+        {
+          provide: GetJobByIdUseCase,
+          useValue: { execute: jest.fn() },
         },
       ],
     })

@@ -1,5 +1,5 @@
 import { Logger, NotFoundException } from '@nestjs/common';
-import { ContractType, JobStatus, Prisma } from '@prisma/client';
+import { ContractType, JobStatus, Prisma, JobShift } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { INotificacaoService } from 'src/modules/notifications/interfaces/notification-service.interface';
 import {
@@ -32,7 +32,7 @@ describe('CreateJobPostingUseCase', () => {
     requirements: 'Experiência prévia e liderança.',
     salary: 4500,
     contractType: ContractType.CLT,
-    shift: 'NOITE',
+    shifts: [JobShift.NOITE],
     restaurantId,
   };
 
@@ -79,7 +79,7 @@ describe('CreateJobPostingUseCase', () => {
       // O Prisma devolve Decimal, não number — é isso que o `.toNumber()` trata.
       salary: new Prisma.Decimal('4500.00'),
       contractType: ContractType.CLT,
-      shift: 'NOITE',
+      shifts: [JobShift.NOITE],
       status: JobStatus.ABERTA,
       urgent: false,
       closedAt: null,
@@ -99,7 +99,7 @@ describe('CreateJobPostingUseCase', () => {
       requirements: input.requirements,
       salary: 4500,
       contractType: ContractType.CLT,
-      shift: 'NOITE',
+      shifts: [JobShift.NOITE],
       status: JobStatus.ABERTA,
       urgent: false,
       restaurantId,
@@ -161,13 +161,13 @@ describe('CreateJobPostingUseCase', () => {
         requirements: input.requirements,
         salary: input.salary,
         contractType: ContractType.CLT,
-        shift: 'NOITE',
+        shifts: [JobShift.NOITE],
         restaurantId,
       },
     });
   });
 
-  it('devolve requisitos, salario e turno como undefined quando vierem nulos', async () => {
+  it('devolve requisitos e salario como undefined e turnos como [] quando vierem vazios', async () => {
     prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
     prisma.job.create.mockResolvedValue({
       id: 'job-2',
@@ -176,7 +176,7 @@ describe('CreateJobPostingUseCase', () => {
       requirements: null,
       salary: null,
       contractType: ContractType.FREELANCER,
-      shift: null,
+      shifts: [],
       status: JobStatus.ABERTA,
       restaurantId,
       createdAt: new Date(),
@@ -187,12 +187,12 @@ describe('CreateJobPostingUseCase', () => {
       requirements: undefined,
       salary: undefined,
       contractType: ContractType.FREELANCER,
-      shift: undefined,
+      shifts: undefined,
     });
 
     expect(result.requirements).toBeUndefined();
     expect(result.salary).toBeUndefined();
-    expect(result.shift).toBeUndefined();
+    expect(result.shifts).toEqual([]);
   });
 
   it('lança NotFoundException quando o restaurante não existe', async () => {
@@ -381,6 +381,24 @@ describe('CreateJobPostingUseCase', () => {
       expect(prisma.professional.findMany).not.toHaveBeenCalled();
       expect(notificacaoService.createMany).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('job-1'));
+    });
+
+    it('restaurante sem CEP (itinerante): cria a vaga sem notificar e sem alerta', async () => {
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+      jest.spyOn(Logger.prototype, 'log').mockImplementation();
+      prisma.restaurant.findUnique.mockResolvedValue({
+        ...restauranteAtivo,
+        zipCode: null,
+      });
+      prisma.job.create.mockResolvedValue(vagaCriada);
+
+      const result = await useCase.execute(input);
+
+      expect(result.id).toBe('job-1');
+      expect(prisma.professional.findMany).not.toHaveBeenCalled();
+      expect(notificacaoService.createMany).not.toHaveBeenCalled();
+      // Sem CEP é um caso válido, não um dado quebrado: não vira warning.
+      expect(warn).not.toHaveBeenCalled();
     });
 
     it('falha no provider não impede criar a vaga e é logada com contexto', async () => {

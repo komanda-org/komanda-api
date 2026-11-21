@@ -1,8 +1,14 @@
-import { ContractType, JobStatus } from '@prisma/client';
+import { ContractType, JobStatus, JobShift } from '@prisma/client';
 
 export interface JobRestaurantDto {
   restaurantName: string;
   logoUrl: string | null;
+  cuisineType: string;
+  averageRating: number | null;
+  // Endereço comercial público; o front usa CEP + endereço para a distância.
+  address: string;
+  // null = restaurante itinerante (só eventos): o front não calcula distância.
+  zipCode: string | null;
 }
 
 export interface JobResponseDto {
@@ -12,7 +18,7 @@ export interface JobResponseDto {
   requirements: string | null;
   salary: string | null;
   contractType: ContractType;
-  shift: string | null;
+  shifts: JobShift[];
   status: JobStatus;
   urgent: boolean;
   restaurantId: string;

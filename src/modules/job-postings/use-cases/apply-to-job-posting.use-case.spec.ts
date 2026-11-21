@@ -6,17 +6,29 @@ import {
 import { JobStatus, Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ApplyToJobPostingUseCase } from './apply-to-job-posting.use-case';
+import type { JobEventNotifier } from '../job-event-notifier';
+import { VISIBLE_RESTAURANT_WHERE } from 'src/modules/jobs/job.mapper';
 
 // Mock tipado no lugar de `any`: só declaramos os métodos do Prisma que este
 // use case realmente usa. Se ele passar a chamar outro método, o TS acusa.
 type PrismaMock = {
-  job: { findUnique: jest.Mock };
+  job: { findFirst: jest.Mock };
   candidatura: { create: jest.Mock };
 };
+
+const createNotifierMock = () => ({
+  newApplication: jest.fn().mockResolvedValue(undefined),
+  applicationDecided: jest.fn().mockResolvedValue(undefined),
+  pendingClosedWithJob: jest.fn().mockResolvedValue(undefined),
+  newMessage: jest.fn().mockResolvedValue(undefined),
+  // Executa direto, como o real (sem o try/catch, que tem teste próprio).
+  safely: jest.fn((_what: string, send: () => Promise<unknown>) => send()),
+});
 
 describe('ApplyToJobPostingUseCase', () => {
   let useCase: ApplyToJobPostingUseCase;
   let prisma: PrismaMock;
+  let notifier: ReturnType<typeof createNotifierMock>;
 
   const VAGA_ID = 'job-1';
   const PROFISSIONAL_ID = 'professional-1';
@@ -37,6 +49,8 @@ describe('ApplyToJobPostingUseCase', () => {
     professionalId: PROFISSIONAL_ID,
     createdAt: new Date('2026-07-10T12:00:00Z'),
     updatedAt: new Date('2026-07-10T12:00:00Z'),
+    job: { restaurantId: 'restaurant-1', title: 'Garçom' },
+    professional: { fullName: 'Marina Souza' },
   };
 
   const prismaError = (code: string) =>
@@ -47,16 +61,20 @@ describe('ApplyToJobPostingUseCase', () => {
 
   beforeEach(() => {
     prisma = {
-      job: { findUnique: jest.fn() },
+      job: { findFirst: jest.fn() },
       candidatura: { create: jest.fn() },
     };
 
     // Um único cast na fronteira do mock — evita `any` espalhado pelo teste.
-    useCase = new ApplyToJobPostingUseCase(prisma as unknown as PrismaService);
+    notifier = createNotifierMock();
+    useCase = new ApplyToJobPostingUseCase(
+      prisma as unknown as PrismaService,
+      notifier as unknown as JobEventNotifier,
+    );
   });
 
   it('cria a candidatura mapeando vagaId/profissionalId para os campos do schema', async () => {
-    prisma.job.findUnique.mockResolvedValue(vagaAberta);
+    prisma.job.findFirst.mockResolvedValue(vagaAberta);
     prisma.candidatura.create.mockResolvedValue(candidaturaCriada);
 
     const result = await useCase.execute(VAGA_ID, PROFISSIONAL_ID);
@@ -70,8 +88,31 @@ describe('ApplyToJobPostingUseCase', () => {
     expect(result).toBe(candidaturaCriada);
   });
 
+  it('avisa o restaurante da candidatura nova', async () => {
+    prisma.job.findFirst.mockResolvedValue(vagaAberta);
+    prisma.candidatura.create.mockResolvedValue(candidaturaCriada);
+
+    await useCase.execute(VAGA_ID, PROFISSIONAL_ID);
+
+    expect(notifier.newApplication).toHaveBeenCalledWith({
+      restaurantId: 'restaurant-1',
+      jobTitle: 'Garçom',
+      professionalName: 'Marina Souza',
+    });
+  });
+
+  it('candidatura recusada (409) não gera aviso', async () => {
+    prisma.job.findFirst.mockResolvedValue(vagaAberta);
+    prisma.candidatura.create.mockRejectedValue(prismaError('P2002'));
+
+    await expect(
+      useCase.execute(VAGA_ID, PROFISSIONAL_ID),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(notifier.newApplication).not.toHaveBeenCalled();
+  });
+
   it('lança NotFoundException quando a vaga não existe', async () => {
-    prisma.job.findUnique.mockResolvedValue(null);
+    prisma.job.findFirst.mockResolvedValue(null);
 
     await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toThrow(
       NotFoundException,
@@ -83,7 +124,7 @@ describe('ApplyToJobPostingUseCase', () => {
   it.each([JobStatus.PAUSADA, JobStatus.ENCERRADA])(
     'lança UnprocessableEntityException quando a vaga está %s',
     async (status) => {
-      prisma.job.findUnique.mockResolvedValue({ ...vagaAberta, status });
+      prisma.job.findFirst.mockResolvedValue({ ...vagaAberta, status });
 
       await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toThrow(
         UnprocessableEntityException,
@@ -94,7 +135,7 @@ describe('ApplyToJobPostingUseCase', () => {
 
   it('lança NotFoundException quando a vaga foi excluída logicamente', async () => {
     // `active` continua true de propósito: isola o deletedAt como causa do 404.
-    prisma.job.findUnique.mockResolvedValue({
+    prisma.job.findFirst.mockResolvedValue({
       ...vagaAberta,
       deletedAt: new Date('2026-07-20T10:00:00Z'),
     });
@@ -107,7 +148,7 @@ describe('ApplyToJobPostingUseCase', () => {
 
   it('lança UnprocessableEntityException quando a vaga está inativa', async () => {
     // deletedAt null e status ABERTA: o 422 só pode ter vindo do `active`.
-    prisma.job.findUnique.mockResolvedValue({ ...vagaAberta, active: false });
+    prisma.job.findFirst.mockResolvedValue({ ...vagaAberta, active: false });
 
     await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toThrow(
       UnprocessableEntityException,
@@ -118,7 +159,7 @@ describe('ApplyToJobPostingUseCase', () => {
   it('prioriza o 404 quando a vaga deletada também está encerrada', async () => {
     // Vaga removida raramente segue ABERTA. Se a guarda de existência escorregar
     // pra baixo da checagem de status, este é o único teste que acusa.
-    prisma.job.findUnique.mockResolvedValue({
+    prisma.job.findFirst.mockResolvedValue({
       ...vagaAberta,
       deletedAt: new Date('2026-07-20T10:00:00Z'),
       active: false,
@@ -132,7 +173,7 @@ describe('ApplyToJobPostingUseCase', () => {
   });
 
   it('converte P2002 (candidatura duplicada) em ConflictException', async () => {
-    prisma.job.findUnique.mockResolvedValue(vagaAberta);
+    prisma.job.findFirst.mockResolvedValue(vagaAberta);
     prisma.candidatura.create.mockRejectedValue(prismaError('P2002'));
 
     await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toThrow(
@@ -141,11 +182,29 @@ describe('ApplyToJobPostingUseCase', () => {
   });
 
   it('repropaga erros que não sejam P2002', async () => {
-    prisma.job.findUnique.mockResolvedValue(vagaAberta);
+    prisma.job.findFirst.mockResolvedValue(vagaAberta);
     const erro = prismaError('P2003');
     prisma.candidatura.create.mockRejectedValue(erro);
 
     // Erro inesperado não pode virar 409 — tem que subir como está.
     await expect(useCase.execute(VAGA_ID, PROFISSIONAL_ID)).rejects.toBe(erro);
+  });
+
+  it('só considera vaga de restaurante não excluído (mesmo filtro da lista)', async () => {
+    prisma.job.findFirst.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute('vaga-de-restaurante-excluido', 'profissional-1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.job.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'vaga-de-restaurante-excluido',
+          restaurant: VISIBLE_RESTAURANT_WHERE,
+        },
+      }),
+    );
+    expect(prisma.candidatura.create).not.toHaveBeenCalled();
   });
 });

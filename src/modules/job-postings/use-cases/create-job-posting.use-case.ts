@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ContractType, Job, Prisma } from '@prisma/client';
+import { ContractType, Job, Prisma, JobShift } from '@prisma/client';
 import {
   JobPostingResponseDto,
   toJobPostingResponse,
@@ -17,7 +17,7 @@ interface CreateJobPostingInput {
   requirements?: string;
   salary?: number;
   contractType: ContractType;
-  shift?: string;
+  shifts?: JobShift[];
   urgent?: boolean;
   restaurantId: string;
 }
@@ -25,7 +25,7 @@ interface CreateJobPostingInput {
 interface RestauranteDaVaga {
   userId: string;
   restaurantName: string;
-  zipCode: string;
+  zipCode: string | null;
 }
 
 @Injectable()
@@ -68,7 +68,7 @@ export class CreateJobPostingUseCase {
           requirements: input.requirements,
           salary: input.salary,
           contractType: input.contractType,
-          shift: input.shift,
+          shifts: input.shifts,
           urgent: input.urgent,
           restaurantId: input.restaurantId,
         },
@@ -101,7 +101,16 @@ export class CreateJobPostingUseCase {
     vaga: Job,
     restaurante: RestauranteDaVaga,
   ): Promise<void> {
-    // O CEP do restaurante é texto livre (só MaxLength): normaliza para dígitos.
+    // Restaurante itinerante (só eventos) não tem CEP: não existe "perto de
+    // você" para avisar. A vaga é publicada normalmente, só sem notificação.
+    if (!restaurante.zipCode) {
+      this.logger.log(
+        `Vaga ${vaga.id}: restaurante ${restaurante.userId} sem CEP (itinerante), nenhuma notificação por proximidade`,
+      );
+      return;
+    }
+
+    // Cadastros antigos aceitavam CEP em texto livre: normaliza para dígitos.
     const prefixoCep = restaurante.zipCode.replace(/\D/g, '').slice(0, 5);
     if (prefixoCep.length < 5) {
       this.logger.warn(

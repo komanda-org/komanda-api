@@ -4,22 +4,51 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { ContractType, JobStatus, Prisma } from '@prisma/client';
+import {
+  CandidaturaStatus,
+  ContractType,
+  JobStatus,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateJobStatusUseCase } from './update-job-status.use-case';
+import type { JobEventNotifier } from '../job-event-notifier';
 
 const createMockPrisma = () => ({
   job: {
     findUnique: jest.fn(),
     update: jest.fn(),
   },
+  candidatura: {
+    findMany: jest.fn().mockResolvedValue([]),
+    updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+  },
+  restaurant: {
+    findUnique: jest
+      .fn()
+      .mockResolvedValue({ restaurantName: 'Bistrô Paulista' }),
+  },
+  // Forma em lista: resolve as operações na ordem, como o Prisma.
+  $transaction: jest.fn((operations: Promise<unknown>[]) =>
+    Promise.all(operations),
+  ),
 });
 
 type MockPrisma = ReturnType<typeof createMockPrisma>;
 
+const createNotifierMock = () => ({
+  newApplication: jest.fn().mockResolvedValue(undefined),
+  applicationDecided: jest.fn().mockResolvedValue(undefined),
+  pendingClosedWithJob: jest.fn().mockResolvedValue(undefined),
+  newMessage: jest.fn().mockResolvedValue(undefined),
+  // Executa direto, como o real (sem o try/catch, que tem teste próprio).
+  safely: jest.fn((_what: string, send: () => Promise<unknown>) => send()),
+});
+
 describe('UpdateJobStatusUseCase', () => {
   let useCase: UpdateJobStatusUseCase;
   let prisma: MockPrisma;
+  let notifier: ReturnType<typeof createNotifierMock>;
 
   const RESTAURANTE_ID = 'restaurant-1';
   const VAGA_ID = 'job-1';
@@ -55,7 +84,11 @@ describe('UpdateJobStatusUseCase', () => {
 
   beforeEach(() => {
     prisma = createMockPrisma();
-    useCase = new UpdateJobStatusUseCase(prisma as unknown as PrismaService);
+    notifier = createNotifierMock();
+    useCase = new UpdateJobStatusUseCase(
+      prisma as unknown as PrismaService,
+      notifier as unknown as JobEventNotifier,
+    );
   });
 
   it('percorre ABERTA → PAUSADA → ABERTA → ENCERRADA', async () => {
@@ -97,6 +130,75 @@ describe('UpdateJobStatusUseCase', () => {
         },
       }),
     );
+  });
+
+  it('ao encerrar, recusa as candidaturas pendentes na mesma transação', async () => {
+    prisma.job.findUnique.mockResolvedValue(
+      vagaDoRestaurante(JobStatus.ABERTA),
+    );
+    prisma.job.update.mockResolvedValue(vagaGravada(JobStatus.ENCERRADA));
+    prisma.candidatura.findMany.mockResolvedValue([
+      { professionalId: 'prof-1' },
+      { professionalId: 'prof-2' },
+    ]);
+    prisma.candidatura.updateMany.mockResolvedValue({ count: 2 });
+
+    const result = await executar(JobStatus.ENCERRADA);
+
+    expect(prisma.candidatura.updateMany).toHaveBeenCalledWith({
+      where: { jobId: VAGA_ID, status: CandidaturaStatus.PENDENTE },
+      data: { status: CandidaturaStatus.REJEITADA },
+    });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(result.status).toBe(JobStatus.ENCERRADA);
+    expect(notifier.pendingClosedWithJob).toHaveBeenCalledWith({
+      professionalIds: ['prof-1', 'prof-2'],
+      jobTitle: 'Chef de Cozinha',
+      restaurantName: 'Bistrô Paulista',
+    });
+  });
+
+  it('encerrar sem candidatos pendentes não avisa ninguém', async () => {
+    prisma.job.findUnique.mockResolvedValue(
+      vagaDoRestaurante(JobStatus.ABERTA),
+    );
+    prisma.job.update.mockResolvedValue(vagaGravada(JobStatus.ENCERRADA));
+
+    await executar(JobStatus.ENCERRADA);
+
+    expect(notifier.pendingClosedWithJob).not.toHaveBeenCalled();
+  });
+
+  it.each([JobStatus.PAUSADA, JobStatus.ABERTA])(
+    'ao mudar para %s, não mexe nas candidaturas',
+    async (status) => {
+      const atual =
+        status === JobStatus.PAUSADA ? JobStatus.ABERTA : JobStatus.PAUSADA;
+      prisma.job.findUnique.mockResolvedValue(vagaDoRestaurante(atual));
+      prisma.job.update.mockResolvedValue(vagaGravada(status));
+
+      await executar(status);
+
+      expect(prisma.candidatura.updateMany).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    },
+  );
+
+  it('409 ao encerrar não recusa ninguém (transação desfeita)', async () => {
+    prisma.job.findUnique.mockResolvedValue(
+      vagaDoRestaurante(JobStatus.ABERTA),
+    );
+    prisma.job.update.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Record not found', {
+        code: 'P2025',
+        clientVersion: 'test',
+      }),
+    );
+
+    await expect(executar(JobStatus.ENCERRADA)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(notifier.pendingClosedWithJob).not.toHaveBeenCalled();
   });
 
   it('não mexe em closedAt ao pausar ou reabrir', async () => {

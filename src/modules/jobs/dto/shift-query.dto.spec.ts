@@ -46,10 +46,23 @@ describe('shift nos DTOs de query de vagas', () => {
       expect(result.shift).toBeUndefined();
     });
 
-    it('rejeita shift acima de 30 caracteres', async () => {
-      await expect(
-        pipe.transform({ shift: 'x'.repeat(31) }, metadata),
-      ).rejects.toBeInstanceOf(BadRequestException);
+    it.each(['MADRUGADA', 'x'.repeat(31), 'manha,tarde'])(
+      'rejeita turno fora da lista (%p)',
+      async (shift) => {
+        await expect(
+          pipe.transform({ shift }, metadata),
+        ).rejects.toBeInstanceOf(BadRequestException);
+      },
+    );
+
+    it('aceita INTEGRAL', async () => {
+      const result = (await pipe.transform(
+        { shift: 'integral' },
+        metadata,
+      )) as {
+        shift?: string;
+      };
+      expect(result.shift).toBe('INTEGRAL');
     });
   });
 });

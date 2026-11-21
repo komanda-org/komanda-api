@@ -5,15 +5,21 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { Candidatura, JobStatus, Prisma } from '@prisma/client';
+import { VISIBLE_RESTAURANT_WHERE } from 'src/modules/jobs/job.mapper';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { JobEventNotifier } from '../job-event-notifier';
 
 @Injectable()
 export class ApplyToJobPostingUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifier: JobEventNotifier,
+  ) {}
 
   async execute(jobId: string, professionalId: string): Promise<Candidatura> {
-    const vaga = await this.prisma.job.findUnique({
-      where: { id: jobId },
+    // Vaga de restaurante excluído é tratada como inexistente, igual à lista.
+    const vaga = await this.prisma.job.findFirst({
+      where: { id: jobId, restaurant: VISIBLE_RESTAURANT_WHERE },
       select: { status: true, active: true, deletedAt: true },
     });
 
@@ -47,6 +53,11 @@ export class ApplyToJobPostingUseCase {
             },
           },
         },
+      });
+      await this.notifier.newApplication({
+        restaurantId: candidatura.job.restaurantId,
+        jobTitle: candidatura.job.title,
+        professionalName: candidatura.professional.fullName,
       });
       return candidatura;
     } catch (error) {

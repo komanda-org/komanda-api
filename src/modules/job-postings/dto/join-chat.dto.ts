@@ -13,6 +13,12 @@ export class JoinChatDto {
   @IsNotEmpty()
   jobId: string;
 
+  /** Obrigatório para restaurante (com quem é a conversa); profissional usa o próprio id. */
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  professionalId?: string;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
