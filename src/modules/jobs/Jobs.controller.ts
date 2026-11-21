@@ -3,6 +3,8 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseUUIDPipe,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -11,7 +13,14 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiOkResponse,
+  ApiParam,
 } from '@nestjs/swagger';
+import type { JwtPayload } from 'src/auth/interfaces/authenticated-request.interface';
+import { ReqUser } from 'src/modules/users/req-user.decorator';
+import { JobDetailResponseDto } from './dto/job-detail-response.dto';
+import { GetJobByIdUseCase } from './use-cases/get-job-by-id.use-case';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { Roles } from 'src/auth/roles.decorator';
@@ -24,8 +33,13 @@ import { SearchJobsUseCase } from './use-cases/search-jobs.use-case';
 @ApiBearerAuth()
 @Controller('jobs')
 @UseGuards(AuthGuard, RolesGuard)
+// Só leituras autenticadas de tela (lista e busca); ver notifications.controller
+@SkipThrottle()
 export class JobsController {
-  constructor(private readonly searchJobsUseCase: SearchJobsUseCase) {}
+  constructor(
+    private readonly searchJobsUseCase: SearchJobsUseCase,
+    private readonly getJobByIdUseCase: GetJobByIdUseCase,
+  ) {}
 
   @Get()
   @Roles(Role.PROFISSIONAL)
@@ -50,5 +64,27 @@ export class JobsController {
   @ApiResponse({ status: 200, description: 'Lista filtrada de vagas' })
   async searchJobs(@Query() query: SearchJobsQueryDto) {
     return await this.searchJobsUseCase.execute(query);
+  }
+
+  // Depois de 'search': senão "search" seria lido como :id.
+  @Get(':id')
+  @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Detalhe da vaga',
+    description:
+      'Profissional: vaga ABERTA, ou pausada/encerrada em que já se candidatou. Restaurante: só as próprias vagas, em qualquer status.',
+  })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiOkResponse({ type: JobDetailResponseDto })
+  @ApiResponse({ status: 400, description: 'id não é um UUID' })
+  @ApiResponse({ status: 401, description: 'Token ausente ou inválido' })
+  @ApiResponse({ status: 403, description: 'Role sem acesso' })
+  @ApiResponse({ status: 404, description: 'Vaga não encontrada' })
+  async getJob(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @ReqUser() user: JwtPayload,
+  ): Promise<JobDetailResponseDto> {
+    return this.getJobByIdUseCase.execute(id, user);
   }
 }

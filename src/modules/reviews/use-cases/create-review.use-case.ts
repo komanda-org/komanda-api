@@ -107,10 +107,19 @@ export class CreateReviewUseCase {
 
       const receiverIsRestaurant = isProfessionalAuthor;
 
+      // Só entram as notas RECEBIDAS: a tabela guarda as duas direções na
+      // mesma linha (professionalId + restaurantId), então sem filtrar por
+      // avaliadorRole a média misturaria as notas que o próprio recebedor deu.
       const aggregate = await this.prisma.avaliacao.aggregate({
         where: receiverIsRestaurant
-          ? { restaurantId: data.restaurantId }
-          : { professionalId: data.professionalId },
+          ? {
+              restaurantId: data.restaurantId,
+              avaliadorRole: Role.PROFISSIONAL,
+            }
+          : {
+              professionalId: data.professionalId,
+              avaliadorRole: Role.RESTAURANTE,
+            },
         _avg: { rating: true },
       });
 

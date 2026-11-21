@@ -1,7 +1,29 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ListReviewsResponseDto } from '../dto/review-response.dto';
+import {
+  ListReviewsResponseDto,
+  REMOVED_REVIEWER_NAME,
+  ReviewerDto,
+} from '../dto/review-response.dto';
+
+const ACCOUNT_STATE = {
+  active: true,
+  deletedAt: true,
+  user: { select: { active: true, deletedAt: true } },
+} as const;
+
+interface AccountState {
+  active: boolean;
+  deletedAt: Date | null;
+  user: { active: boolean; deletedAt: Date | null };
+}
+
+const isAvailable = (account: AccountState) =>
+  account.active &&
+  !account.deletedAt &&
+  account.user.active &&
+  !account.user.deletedAt;
 
 interface ListReceivedReviewsInput {
   userId: string;
@@ -51,6 +73,13 @@ export class ListReceivedReviewsUseCase {
           professionalId: true,
           restaurantId: true,
           createdAt: true,
+          // Só o lado que escreveu é usado, mas os dois vêm na mesma consulta.
+          professional: {
+            select: { fullName: true, profilePhoto: true, ...ACCOUNT_STATE },
+          },
+          restaurant: {
+            select: { restaurantName: true, logoUrl: true, ...ACCOUNT_STATE },
+          },
         },
       }),
       this.prisma.avaliacao.count({ where }),
@@ -58,16 +87,36 @@ export class ListReceivedReviewsUseCase {
     ]);
 
     return {
-      data: reviews.map((review) => ({
-        id: review.id,
-        rating: review.rating,
-        comment: review.comment,
-        jobId: review.jobId,
-        reviewerId: isProfessional
-          ? review.restaurantId
-          : review.professionalId,
-        createdAt: review.createdAt,
-      })),
+      data: reviews.map((review) => {
+        const reviewer: ReviewerDto = isProfessional
+          ? {
+              id: review.restaurantId,
+              name: review.restaurant.restaurantName,
+              photo: review.restaurant.logoUrl,
+              role: Role.RESTAURANTE,
+            }
+          : {
+              id: review.professionalId,
+              name: review.professional.fullName,
+              photo: review.professional.profilePhoto,
+              role: Role.PROFISSIONAL,
+            };
+        const author = isProfessional ? review.restaurant : review.professional;
+        if (!isAvailable(author)) {
+          reviewer.name = REMOVED_REVIEWER_NAME;
+          reviewer.photo = null;
+        }
+
+        return {
+          id: review.id,
+          rating: review.rating,
+          comment: review.comment,
+          jobId: review.jobId,
+          reviewerId: reviewer.id,
+          reviewer,
+          createdAt: review.createdAt,
+        };
+      }),
       total,
       skip,
       take,

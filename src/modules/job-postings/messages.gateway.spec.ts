@@ -15,16 +15,44 @@ import { MessageResponseDto } from './dto/message-response.dto';
 describe('MessagesGateway', () => {
   let gateway: MessagesGateway;
   let module: TestingModule;
-  let mockServer: Partial<Server>;
-  let mockSocket: Partial<Socket>;
-  let mockSendMessageUseCase: Partial<
-    Record<keyof SendMessageUseCase, jest.Mock>
-  >;
-  let mockListMessagesUseCase: Partial<
-    Record<keyof ListMessagesUseCase, jest.Mock>
-  >;
-  let mockJwtService: Partial<Record<keyof JwtService, jest.Mock>>;
-  let mockConfigService: Partial<Record<keyof ConfigService, jest.Mock>>;
+  let mockServer: { to: jest.Mock; emit: jest.Mock };
+  let mockSocket: {
+    id: string;
+    handshake: { auth: { token?: string } };
+    data: Record<string, any>;
+    join: jest.Mock;
+    leave: jest.Mock;
+    emit: jest.Mock;
+    disconnect: jest.Mock;
+  };
+  let mockSendMessageUseCase: { execute: jest.Mock };
+  let mockListMessagesUseCase: { execute: jest.Mock };
+  let mockJwtService: { verify: jest.Mock };
+  let mockConfigService: { get: jest.Mock };
+
+  const PROFESSIONAL = { id: 'prof-1', role: 'PROFISSIONAL' };
+  const RESTAURANT = { id: 'rest-1', role: 'RESTAURANTE' };
+
+  const socketFor = (user: { id: string; role: string }, id = 'socket-x') => ({
+    ...mockSocket,
+    id,
+    data: { user },
+    join: jest.fn(),
+    leave: jest.fn(),
+    emit: jest.fn(),
+  });
+
+  const message = (overrides: Record<string, unknown> = {}) => ({
+    id: 'msg-1',
+    jobId: 'job-1',
+    professionalId: 'prof-1',
+    senderId: 'prof-1',
+    content: 'Hello',
+    createdAt: new Date(),
+    ...overrides,
+  });
+
+  const asSocket = (s: unknown) => s as Socket;
 
   beforeEach(async () => {
     mockServer = {
@@ -42,20 +70,11 @@ describe('MessagesGateway', () => {
       disconnect: jest.fn(),
     };
 
-    mockSendMessageUseCase = {
-      execute: jest.fn(),
-    };
-
-    mockListMessagesUseCase = {
-      execute: jest.fn(),
-    };
-
+    mockSendMessageUseCase = { execute: jest.fn() };
+    mockListMessagesUseCase = { execute: jest.fn() };
     mockJwtService = {
-      verify: jest
-        .fn()
-        .mockReturnValue({ id: 'user-1', role: 'PROFISSIONAL' }),
+      verify: jest.fn().mockReturnValue(PROFESSIONAL),
     };
-
     mockConfigService = {
       get: jest.fn().mockReturnValue('test-secret'),
     };
@@ -71,7 +90,7 @@ describe('MessagesGateway', () => {
     }).compile();
 
     gateway = module.get<MessagesGateway>(MessagesGateway);
-    gateway.server = mockServer as Server;
+    gateway.server = mockServer as unknown as Server;
 
     jest.clearAllMocks();
   });
@@ -81,248 +100,377 @@ describe('MessagesGateway', () => {
   });
 
   describe('handleConnection', () => {
-    it('should accept connection with valid token', async () => {
-      await gateway.handleConnection(mockSocket as Socket);
+    it('aceita conexão com token válido', async () => {
+      await gateway.handleConnection(asSocket(mockSocket));
 
       expect(mockJwtService.verify).toHaveBeenCalledWith('valid-token', {
         secret: 'test-secret',
       });
-      expect(mockSocket.data.user).toEqual({
-        id: 'user-1',
-        role: 'PROFISSIONAL',
-      });
+      expect(mockSocket.data.user).toEqual(PROFESSIONAL);
     });
 
-    it('should reject connection without token', async () => {
+    it('recusa conexão sem token', async () => {
       const socketWithoutToken = { ...mockSocket, handshake: { auth: {} } };
-      await gateway.handleConnection(socketWithoutToken as Socket);
+      await gateway.handleConnection(asSocket(socketWithoutToken));
 
       expect(mockSocket.disconnect).toHaveBeenCalledWith(true);
     });
 
-    it('should reject connection with invalid token', async () => {
+    it('recusa conexão com token inválido', async () => {
       mockJwtService.verify.mockImplementationOnce(() => {
         throw new Error('Invalid token');
       });
 
-      await gateway.handleConnection(mockSocket as Socket);
+      await gateway.handleConnection(asSocket(mockSocket));
 
       expect(mockSocket.disconnect).toHaveBeenCalledWith(true);
     });
   });
 
   describe('handleDisconnect', () => {
-    it('should clean up rate limit on disconnect', async () => {
-      // First make a request to create rate limit entry
-      mockSocket.data.user = { id: 'user-1' };
+    it('sai das conversas e avisa a presença de quem ficou', async () => {
+      const prof = socketFor(PROFESSIONAL, 's-prof');
+      const rest = socketFor(RESTAURANT, 's-rest');
       mockListMessagesUseCase.execute.mockResolvedValue({
+        professionalId: 'prof-1',
         messages: [],
         hasMore: false,
       });
-      mockSocket.emit.mockReset();
+      await gateway.handleJoin(asSocket(prof), { jobId: 'job-1' });
+      await gateway.handleJoin(asSocket(rest), {
+        jobId: 'job-1',
+        professionalId: 'prof-1',
+      });
+      mockServer.emit.mockClear();
 
-      await gateway.handleJoin(mockSocket as Socket, { jobId: 'job-1' });
+      gateway.handleDisconnect(asSocket(prof));
 
-      // Now disconnect
-      gateway.handleDisconnect(mockSocket as Socket);
-
-      // Rate limit should be cleaned up
-      // We can't directly test the private map, but we can verify no error
+      expect(mockServer.to).toHaveBeenCalledWith('chat:job-1:prof-1');
+      expect(mockServer.emit).toHaveBeenCalledWith('chat:presence', {
+        jobId: 'job-1',
+        professionalId: 'prof-1',
+        online: false,
+      });
     });
   });
 
   describe('handleJoin (chat:join)', () => {
-    beforeEach(() => {
-      mockSocket.data.user = { id: 'user-1' };
-    });
-
-    it('should join room and return messages on success', async () => {
-      const mockMessages = [
-        {
-          id: 'msg-1',
-          jobId: 'job-1',
-          senderId: 'user-1',
-          content: 'Hello',
-          createdAt: new Date(),
-        },
-      ];
+    it('profissional entra na própria conversa (ignora professionalId do cliente)', async () => {
+      const prof = socketFor(PROFESSIONAL);
       mockListMessagesUseCase.execute.mockResolvedValue({
-        messages: mockMessages,
+        professionalId: 'prof-1',
+        messages: [message()],
         hasMore: false,
       });
 
-      const result = await gateway.handleJoin(mockSocket as Socket, {
+      const result = await gateway.handleJoin(asSocket(prof), {
         jobId: 'job-1',
+        professionalId: 'prof-2',
         take: 20,
       });
 
       expect(mockListMessagesUseCase.execute).toHaveBeenCalledWith({
         jobId: 'job-1',
-        userId: 'user-1',
+        userId: 'prof-1',
         take: 20,
       });
-      expect(mockSocket.join).toHaveBeenCalledWith('job:job-1');
+      expect(prof.join).toHaveBeenCalledWith('chat:job-1:prof-1');
       expect(result.ok).toBe(true);
       expect(result.messages).toHaveLength(1);
+      expect(result.messages?.[0].professionalId).toBe('prof-1');
       expect(result.hasMore).toBe(false);
     });
 
-    it('should return 403 when assertChatAccess fails', async () => {
+    it('restaurante entra na conversa do profissional informado', async () => {
+      const rest = socketFor(RESTAURANT);
+      mockListMessagesUseCase.execute.mockResolvedValue({
+        professionalId: 'prof-2',
+        messages: [],
+        hasMore: false,
+      });
+
+      const result = await gateway.handleJoin(asSocket(rest), {
+        jobId: 'job-1',
+        professionalId: 'prof-2',
+      });
+
+      expect(mockListMessagesUseCase.execute).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'rest-1' }),
+      );
+      expect(rest.join).toHaveBeenCalledWith('chat:job-1:prof-2');
+      expect(result.ok).toBe(true);
+    });
+
+    it('restaurante sem professionalId: chat:error 400 e não consulta nada', async () => {
+      const rest = socketFor(RESTAURANT);
+
+      const result = await gateway.handleJoin(asSocket(rest), {
+        jobId: 'job-1',
+      });
+
+      const error = {
+        statusCode: 400,
+        message: 'professionalId é obrigatório',
+      };
+      expect(result).toEqual({ ok: false, error });
+      expect(rest.emit).toHaveBeenCalledWith('chat:error', error);
+      expect(rest.join).not.toHaveBeenCalled();
+      expect(mockListMessagesUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('emite presença online só para a sala da conversa quando o outro lado entra', async () => {
+      mockListMessagesUseCase.execute.mockResolvedValue({
+        professionalId: 'prof-1',
+        messages: [],
+        hasMore: false,
+      });
+
+      await gateway.handleJoin(asSocket(socketFor(PROFESSIONAL)), {
+        jobId: 'job-1',
+      });
+      expect(mockServer.emit).not.toHaveBeenCalled();
+
+      await gateway.handleJoin(asSocket(socketFor(RESTAURANT)), {
+        jobId: 'job-1',
+        professionalId: 'prof-1',
+      });
+
+      expect(mockServer.to).toHaveBeenCalledWith('chat:job-1:prof-1');
+      expect(mockServer.emit).toHaveBeenCalledWith('chat:presence', {
+        jobId: 'job-1',
+        professionalId: 'prof-1',
+        online: true,
+      });
+    });
+
+    it('outro aprovado da mesma vaga não conta como presença na conversa', async () => {
+      mockListMessagesUseCase.execute
+        .mockResolvedValueOnce({
+          professionalId: 'prof-1',
+          messages: [],
+          hasMore: false,
+        })
+        .mockResolvedValueOnce({
+          professionalId: 'prof-2',
+          messages: [],
+          hasMore: false,
+        });
+
+      await gateway.handleJoin(asSocket(socketFor(PROFESSIONAL)), {
+        jobId: 'job-1',
+      });
+      await gateway.handleJoin(
+        asSocket(socketFor({ id: 'prof-2', role: 'PROFISSIONAL' })),
+        { jobId: 'job-1' },
+      );
+
+      expect(mockServer.emit).not.toHaveBeenCalled();
+    });
+
+    it('devolve 403 quando o gate recusa', async () => {
       mockListMessagesUseCase.execute.mockRejectedValue(
         new ForbiddenException(
           'Só é possível conversar após uma candidatura aprovada na vaga',
         ),
       );
 
-      const result = await gateway.handleJoin(mockSocket as Socket, {
-        jobId: 'job-1',
-      });
+      const result = await gateway.handleJoin(
+        asSocket(socketFor(PROFESSIONAL)),
+        { jobId: 'job-1' },
+      );
 
       expect(result.ok).toBe(false);
-      expect(result.error.statusCode).toBe(403);
+      expect(result.error?.statusCode).toBe(403);
     });
 
-    it('should return 404 when job not found', async () => {
+    it('devolve 404 quando a vaga não existe', async () => {
       mockListMessagesUseCase.execute.mockRejectedValue(
         new NotFoundException('Vaga não encontrada'),
       );
 
-      const result = await gateway.handleJoin(mockSocket as Socket, {
-        jobId: 'job-1',
-      });
+      const result = await gateway.handleJoin(
+        asSocket(socketFor(PROFESSIONAL)),
+        { jobId: 'job-1' },
+      );
 
       expect(result.ok).toBe(false);
-      expect(result.error.statusCode).toBe(404);
+      expect(result.error?.statusCode).toBe(404);
     });
 
-    it('should enforce rate limit', async () => {
+    it('aplica o rate limit', async () => {
+      const prof = socketFor(PROFESSIONAL);
       mockListMessagesUseCase.execute.mockResolvedValue({
+        professionalId: 'prof-1',
         messages: [],
         hasMore: false,
       });
 
-      // Make 21 requests (limit is 20 per 10 seconds)
+      // 21 requisições (limite: 20 a cada 10 segundos)
       for (let i = 0; i < 21; i++) {
-        const result = await gateway.handleJoin(mockSocket as Socket, {
+        const result = await gateway.handleJoin(asSocket(prof), {
           jobId: 'job-1',
         });
         if (i < 20) {
           expect(result.ok).toBe(true);
         } else {
           expect(result.ok).toBe(false);
-          expect(result.error.statusCode).toBe(429);
+          expect(result.error?.statusCode).toBe(429);
         }
       }
     });
   });
 
   describe('handleLeave (chat:leave)', () => {
-    beforeEach(() => {
-      mockSocket.data.user = { id: 'user-1' };
-    });
+    it('profissional sai da própria conversa', async () => {
+      const prof = socketFor(PROFESSIONAL);
 
-    it('should leave room', async () => {
-      const result = await gateway.handleLeave(mockSocket as Socket, {
+      const result = await gateway.handleLeave(asSocket(prof), {
         jobId: 'job-1',
       });
 
-      expect(mockSocket.leave).toHaveBeenCalledWith('job:job-1');
+      expect(prof.leave).toHaveBeenCalledWith('chat:job-1:prof-1');
       expect(result.ok).toBe(true);
     });
 
-    it('should enforce rate limit', async () => {
+    it('restaurante sai da conversa do profissional informado', async () => {
+      const rest = socketFor(RESTAURANT);
+
+      await gateway.handleLeave(asSocket(rest), {
+        jobId: 'job-1',
+        professionalId: 'prof-2',
+      });
+
+      expect(rest.leave).toHaveBeenCalledWith('chat:job-1:prof-2');
+    });
+
+    it('restaurante sem professionalId recebe 400', async () => {
+      const rest = socketFor(RESTAURANT);
+
+      const result = await gateway.handleLeave(asSocket(rest), {
+        jobId: 'job-1',
+      });
+
+      expect(result.ok).toBe(false);
+      expect(rest.leave).not.toHaveBeenCalled();
+    });
+
+    it('aplica o rate limit', async () => {
+      const prof = socketFor(PROFESSIONAL);
       for (let i = 0; i < 21; i++) {
-        const result = await gateway.handleLeave(mockSocket as Socket, {
+        const result = await gateway.handleLeave(asSocket(prof), {
           jobId: 'job-1',
         });
         if (i < 20) {
           expect(result.ok).toBe(true);
         } else {
           expect(result.ok).toBe(false);
-          expect(result.error.statusCode).toBe(429);
+          expect(result.error?.statusCode).toBe(429);
         }
       }
     });
   });
 
   describe('handleSend (chat:send)', () => {
-    beforeEach(() => {
-      mockSocket.data.user = { id: 'user-1' };
-    });
+    it('grava e transmite só para a sala da conversa', async () => {
+      const rest = socketFor(RESTAURANT);
+      mockSendMessageUseCase.execute.mockResolvedValue(
+        message({ professionalId: 'prof-2', senderId: 'rest-1' }),
+      );
 
-    it('should send message and broadcast to room', async () => {
-      const mockMessage = {
-        id: 'msg-1',
+      const result = await gateway.handleSend(asSocket(rest), {
         jobId: 'job-1',
-        senderId: 'user-1',
-        content: 'Hello',
-        createdAt: new Date(),
-      };
-      mockSendMessageUseCase.execute.mockResolvedValue(mockMessage);
-
-      const result = await gateway.handleSend(mockSocket as Socket, {
-        jobId: 'job-1',
+        professionalId: 'prof-2',
         content: 'Hello',
       });
 
       expect(mockSendMessageUseCase.execute).toHaveBeenCalledWith({
         jobId: 'job-1',
-        senderId: 'user-1',
+        senderId: 'rest-1',
         content: 'Hello',
+        onlineUserIds: undefined,
       });
-      expect(mockServer.to).toHaveBeenCalledWith('job:job-1');
+      expect(mockServer.to).toHaveBeenCalledWith('chat:job-1:prof-2');
+      expect(mockServer.to).not.toHaveBeenCalledWith('chat:job-1:prof-1');
       expect(mockServer.emit).toHaveBeenCalledWith(
         'chat:message',
         expect.any(MessageResponseDto),
       );
       expect(result.ok).toBe(true);
-      expect(result.message).toBeDefined();
+      expect(result.message?.professionalId).toBe('prof-2');
     });
 
-    it('should return 403 when assertChatAccess fails', async () => {
+    it('passa a presença da conversa para não notificar quem está nela', async () => {
+      mockListMessagesUseCase.execute.mockResolvedValue({
+        professionalId: 'prof-1',
+        messages: [],
+        hasMore: false,
+      });
+      const prof = socketFor(PROFESSIONAL);
+      await gateway.handleJoin(asSocket(prof), { jobId: 'job-1' });
+      mockSendMessageUseCase.execute.mockResolvedValue(message());
+
+      await gateway.handleSend(asSocket(prof), {
+        jobId: 'job-1',
+        content: 'Hello',
+      });
+
+      const [[input]] = mockSendMessageUseCase.execute.mock.calls as [
+        [{ onlineUserIds: Set<string> }],
+      ];
+      expect([...input.onlineUserIds]).toEqual(['prof-1']);
+    });
+
+    it('restaurante sem professionalId recebe 400 e nada é gravado', async () => {
+      const rest = socketFor(RESTAURANT);
+
+      const result = await gateway.handleSend(asSocket(rest), {
+        jobId: 'job-1',
+        content: 'Hello',
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.error?.statusCode).toBe(400);
+      expect(mockSendMessageUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('devolve 403 quando o gate recusa', async () => {
       mockSendMessageUseCase.execute.mockRejectedValue(
         new ForbiddenException(
           'Só é possível conversar após uma candidatura aprovada na vaga',
         ),
       );
 
-      const result = await gateway.handleSend(mockSocket as Socket, {
-        jobId: 'job-1',
-        content: 'Hello',
-      });
+      const result = await gateway.handleSend(
+        asSocket(socketFor(PROFESSIONAL)),
+        { jobId: 'job-1', content: 'Hello' },
+      );
 
       expect(result.ok).toBe(false);
-      expect(result.error.statusCode).toBe(403);
+      expect(result.error?.statusCode).toBe(403);
     });
 
-    it('should validate content length', async () => {
-      const longContent = 'a'.repeat(2001);
+    it('devolve 400 em erro de validação', async () => {
       mockSendMessageUseCase.execute.mockRejectedValue(
         new BadRequestException(
           'content must be shorter than or equal to 2000 characters',
         ),
       );
 
-      const result = await gateway.handleSend(mockSocket as Socket, {
-        jobId: 'job-1',
-        content: longContent,
-      });
+      const result = await gateway.handleSend(
+        asSocket(socketFor(PROFESSIONAL)),
+        { jobId: 'job-1', content: 'a'.repeat(2001) },
+      );
 
       expect(result.ok).toBe(false);
-      expect(result.error.statusCode).toBe(400);
+      expect(result.error?.statusCode).toBe(400);
     });
 
-    it('should enforce rate limit', async () => {
-      mockSendMessageUseCase.execute.mockResolvedValue({
-        id: 'msg-1',
-        jobId: 'job-1',
-        senderId: 'user-1',
-        content: 'Hello',
-        createdAt: new Date(),
-      });
+    it('aplica o rate limit', async () => {
+      const prof = socketFor(PROFESSIONAL);
+      mockSendMessageUseCase.execute.mockResolvedValue(message());
 
       for (let i = 0; i < 21; i++) {
-        const result = await gateway.handleSend(mockSocket as Socket, {
+        const result = await gateway.handleSend(asSocket(prof), {
           jobId: 'job-1',
           content: 'Hello',
         });
@@ -330,40 +478,30 @@ describe('MessagesGateway', () => {
           expect(result.ok).toBe(true);
         } else {
           expect(result.ok).toBe(false);
-          expect(result.error.statusCode).toBe(429);
+          expect(result.error?.statusCode).toBe(429);
         }
       }
     });
   });
 
   describe('handleHistory (chat:history)', () => {
-    beforeEach(() => {
-      mockSocket.data.user = { id: 'user-1' };
-    });
-
-    it('should return paginated history', async () => {
-      const mockMessages = [
-        {
-          id: 'msg-1',
-          jobId: 'job-1',
-          senderId: 'user-1',
-          content: 'Hello',
-          createdAt: new Date(),
-        },
-      ];
+    it('devolve o histórico paginado da conversa', async () => {
+      const rest = socketFor(RESTAURANT);
       mockListMessagesUseCase.execute.mockResolvedValue({
-        messages: mockMessages,
+        professionalId: 'prof-1',
+        messages: [message()],
         hasMore: false,
       });
 
-      const result = await gateway.handleHistory(mockSocket as Socket, {
+      const result = await gateway.handleHistory(asSocket(rest), {
         jobId: 'job-1',
+        professionalId: 'prof-1',
         take: 10,
       });
 
       expect(mockListMessagesUseCase.execute).toHaveBeenCalledWith({
         jobId: 'job-1',
-        userId: 'user-1',
+        userId: 'rest-1',
         take: 10,
         before: undefined,
       });
@@ -372,40 +510,52 @@ describe('MessagesGateway', () => {
       expect(result.hasMore).toBe(false);
     });
 
-    it('should parse before date', async () => {
+    it('converte o before para Date', async () => {
       const beforeDate = '2024-01-15T12:00:00.000Z';
       mockListMessagesUseCase.execute.mockResolvedValue({
+        professionalId: 'prof-1',
         messages: [],
         hasMore: false,
       });
 
-      await gateway.handleHistory(mockSocket as Socket, {
+      await gateway.handleHistory(asSocket(socketFor(PROFESSIONAL)), {
         jobId: 'job-1',
         before: beforeDate,
       });
 
       expect(mockListMessagesUseCase.execute).toHaveBeenCalledWith(
-        expect.objectContaining({
-          before: new Date(beforeDate),
-        }),
+        expect.objectContaining({ before: new Date(beforeDate) }),
       );
     });
 
-    it('should enforce rate limit', async () => {
+    it('restaurante sem professionalId recebe 400', async () => {
+      const result = await gateway.handleHistory(
+        asSocket(socketFor(RESTAURANT)),
+        { jobId: 'job-1' },
+      );
+
+      expect(result.ok).toBe(false);
+      expect(result.error?.statusCode).toBe(400);
+      expect(mockListMessagesUseCase.execute).not.toHaveBeenCalled();
+    });
+
+    it('aplica o rate limit', async () => {
+      const prof = socketFor(PROFESSIONAL);
       mockListMessagesUseCase.execute.mockResolvedValue({
+        professionalId: 'prof-1',
         messages: [],
         hasMore: false,
       });
 
       for (let i = 0; i < 21; i++) {
-        const result = await gateway.handleHistory(mockSocket as Socket, {
+        const result = await gateway.handleHistory(asSocket(prof), {
           jobId: 'job-1',
         });
         if (i < 20) {
           expect(result.ok).toBe(true);
         } else {
           expect(result.ok).toBe(false);
-          expect(result.error.statusCode).toBe(429);
+          expect(result.error?.statusCode).toBe(429);
         }
       }
     });

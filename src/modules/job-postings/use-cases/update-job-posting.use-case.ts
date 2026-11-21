@@ -1,5 +1,5 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
-import { ContractType, JobStatus } from '@prisma/client';
+import { ContractType, JobStatus, JobShift } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import {
   JobPostingResponseDto,
@@ -14,6 +14,8 @@ interface JobPostingChanges {
   // Anuláveis no schema: null remove o dado.
   requirements: string | null;
   salary: number | null;
+  // Lista final de turnos; [] apaga (o DTO converte null em []).
+  shifts: JobShift[];
   contractType: ContractType;
   urgent: boolean;
 }
@@ -54,6 +56,7 @@ export class UpdateJobPostingUseCase {
           description: changes.description ?? undefined,
           requirements: changes.requirements,
           salary: changes.salary,
+          shifts: changes.shifts,
           contractType: changes.contractType ?? undefined,
           urgent: changes.urgent ?? undefined,
         },

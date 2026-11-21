@@ -43,7 +43,7 @@ export class ListMyJobsUseCase {
         requirements: job.requirements,
         salary: job.salary?.toNumber() ?? null,
         contractType: job.contractType,
-        shift: job.shift,
+        shifts: job.shifts,
         status: job.status,
         urgent: job.urgent,
         createdAt: job.createdAt,

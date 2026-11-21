@@ -9,8 +9,10 @@ interface ListUserChatsInput {
 
 interface ChatListItem {
   jobId: string;
+  professionalId: string;
   jobTitle: string;
   otherPartyName: string;
+  otherPartyPhoto: string | null;
   otherPartyRole: Role;
   lastMessageContent: string | null;
   lastMessageTime: Date | null;
@@ -50,9 +52,11 @@ export class ListUserChatsUseCase {
         candidaturas: {
           where: { status: CandidaturaStatus.APROVADA },
           select: {
+            professionalId: true,
             professional: {
               select: {
                 fullName: true,
+                profilePhoto: true,
               },
             },
           },
@@ -60,6 +64,8 @@ export class ListUserChatsUseCase {
       },
     });
 
+    // Última mensagem de cada job (o banco não tem professionalId na mensagem,
+    // então não dá para filtrar por conversa; usamos a última do job).
     const lastMessageByJob = await this.lastMessagesByJob(
       jobs.map((job) => job.id),
     );
@@ -71,13 +77,14 @@ export class ListUserChatsUseCase {
       // Para cada candidatura aprovada, criar uma entrada de chat
       for (const candidatura of job.candidaturas) {
         // ponytail: unreadCount hardcoded em 0 (sem tabela de leitura por usuário).
-        // Upgrade: contar mensagens com createdAt > última leitura do usuário no job.
         const unreadCount = 0;
 
         chats.push({
           jobId: job.id,
+          professionalId: candidatura.professionalId,
           jobTitle: job.title,
           otherPartyName: candidatura.professional.fullName,
+          otherPartyPhoto: candidatura.professional.profilePhoto ?? null,
           otherPartyRole: Role.PROFISSIONAL,
           lastMessageContent: lastMessage?.content ?? null,
           lastMessageTime: lastMessage?.createdAt ?? null,
@@ -85,6 +92,13 @@ export class ListUserChatsUseCase {
         });
       }
     }
+
+    // Ordenar por última mensagem (mais recente primeiro); sem mensagem vai ao fim.
+    chats.sort((a, b) => {
+      const timeA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+      const timeB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+      return timeB - timeA;
+    });
 
     return chats;
   }
@@ -104,6 +118,7 @@ export class ListUserChatsUseCase {
             restaurant: {
               select: {
                 restaurantName: true,
+                logoUrl: true,
               },
             },
           },
@@ -111,6 +126,7 @@ export class ListUserChatsUseCase {
       },
     });
 
+    // Última mensagem de cada job (mesma limitação acima).
     const lastMessageByJob = await this.lastMessagesByJob(
       candidaturas.map((cand) => cand.job.id),
     );
@@ -124,8 +140,10 @@ export class ListUserChatsUseCase {
 
       chats.push({
         jobId: cand.job.id,
+        professionalId,
         jobTitle: cand.job.title,
         otherPartyName: cand.job.restaurant.restaurantName,
+        otherPartyPhoto: cand.job.restaurant.logoUrl ?? null,
         otherPartyRole: Role.RESTAURANTE,
         lastMessageContent: lastMessage?.content ?? null,
         lastMessageTime: lastMessage?.createdAt ?? null,
@@ -133,12 +151,21 @@ export class ListUserChatsUseCase {
       });
     }
 
+    // Ordenar por última mensagem (mais recente primeiro); sem mensagem vai ao fim.
+    chats.sort((a, b) => {
+      const timeA = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+      const timeB = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+      return timeB - timeA;
+    });
+
     return chats;
   }
 
   // Busca a última mensagem de cada job em uma única query (evita o N+1 de
   // fazer findFirst por chat dentro do loop acima).
-  private async lastMessagesByJob(jobIds: string[]): Promise<Record<string, LastMessage>> {
+  private async lastMessagesByJob(
+    jobIds: string[],
+  ): Promise<Record<string, LastMessage>> {
     if (jobIds.length === 0) return {};
 
     const messages = await this.prisma.message.findMany({

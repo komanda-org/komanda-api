@@ -13,6 +13,7 @@ import {
   ValidationArguments,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsOptionalZipCode } from 'src/common/validators/is-zip-code';
 
 @ValidatorConstraint({ name: 'CnpjValidator', async: false })
 export class CnpjValidator implements ValidatorConstraintInterface {
@@ -137,15 +138,8 @@ export class CreateRestaurantDto {
   })
   phone!: string;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty({
-    message: 'CEP não pode ser vazio',
-  })
-  @MaxLength(10, {
-    message: 'CEP deve ter no máximo 10 caracteres',
-  })
-  zipCode!: string;
+  @IsOptionalZipCode()
+  zipCode?: string | null;
 
   @ApiProperty({ required: false })
   @IsOptional()

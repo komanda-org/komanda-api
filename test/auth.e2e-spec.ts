@@ -1,8 +1,10 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import {
+  ThrottlerGuard,
   ThrottlerModule,
   ThrottlerStorage,
   ThrottlerStorageService,
@@ -20,6 +22,7 @@ describe('Auth E2E', () => {
   const mockPrismaService = {
     user: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -44,7 +47,7 @@ describe('Auth E2E', () => {
         ThrottlerModule.forRoot({
           throttlers: [
             {
-              name: 'login',
+              name: 'default',
               limit: Number(process.env.AUTH_LOGIN_LIMIT ?? 5),
               ttl: Number(process.env.AUTH_LOGIN_TTL_SECONDS ?? 60) * 1000,
             },
@@ -52,6 +55,8 @@ describe('Auth E2E', () => {
         }),
         AuthModule,
       ],
+      // Mesmo guard global registrado no AppModule, para o teste refletir a app.
+      providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
     })
       .overrideProvider(PrismaService)
       .useValue(mockPrismaService)
@@ -127,18 +132,28 @@ describe('Auth E2E', () => {
         .expect(400);
     });
 
-    it('should return 404 when user not found', async () => {
-      const loginDto = {
-        email: 'notfound@example.com',
-        password: 'password',
-      };
-
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
-
-      await request(app.getHttpServer())
+    it('should return the same 401 for unknown email and wrong password', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValueOnce(null);
+      const unknownEmail = await request(app.getHttpServer())
         .post('/api/auth/login')
-        .send(loginDto)
-        .expect(404);
+        .send({ email: 'notfound@example.com', password: 'password' })
+        .expect(401);
+
+      mockPrismaService.user.findUnique.mockResolvedValueOnce({
+        id: '123',
+        email: 'test@example.com',
+        passwordHash: await bcrypt.hash('right-password', 4),
+        deletedAt: null,
+        active: true,
+        role: 'PROFISSIONAL',
+      });
+      const wrongPassword = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ email: 'test@example.com', password: 'wrong-password' })
+        .expect(401);
+
+      expect(unknownEmail.body).toEqual(wrongPassword.body);
+      expect(unknownEmail.body.message).toBe('E-mail ou senha inválidos');
     });
 
     it('should return 401 with incorrect password', async () => {
@@ -252,6 +267,27 @@ describe('Auth E2E', () => {
       await request(app.getHttpServer())
         .post('/api/auth/login')
         .send(loginDto)
+        .expect(429)
+        .expect(({ body }) => {
+          expect(body.message).toMatch(/muitas tentativas|Too Many Requests/i);
+        });
+    });
+  });
+
+  describe('POST /api/auth/recover-password', () => {
+    it('should return 429 after exceeding the recovery request limit for the same IP', async () => {
+      mockPrismaService.user.findFirst.mockResolvedValue(null);
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await request(app.getHttpServer())
+          .post('/api/auth/recover-password')
+          .send({ email: 'missing@example.com' })
+          .expect(200);
+      }
+
+      await request(app.getHttpServer())
+        .post('/api/auth/recover-password')
+        .send({ email: 'missing@example.com' })
         .expect(429)
         .expect(({ body }) => {
           expect(body.message).toMatch(/muitas tentativas|Too Many Requests/i);

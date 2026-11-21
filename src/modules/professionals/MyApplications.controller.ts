@@ -13,6 +13,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Role } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
@@ -32,6 +33,7 @@ export class MyApplicationsController {
   ) {}
 
   @Get('me/applications')
+  @SkipThrottle() // leitura autenticada de tela; ver notifications.controller
   @HttpCode(HttpStatus.OK)
   @Roles(Role.PROFISSIONAL)
   @ApiOperation({ summary: 'Listar minhas candidaturas' })

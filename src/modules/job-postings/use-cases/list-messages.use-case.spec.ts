@@ -25,10 +25,18 @@ describe('ListMessagesUseCase', () => {
     createdAt: overrides.createdAt || new Date(),
   });
 
+  const mockJob = {
+    restaurantId: 'restaurant-1',
+    candidaturas: [{ professionalId: 'prof-1' }],
+  };
+
   beforeEach(async () => {
     prisma = {
       message: {
         findMany: jest.fn(),
+      },
+      job: {
+        findUnique: jest.fn().mockResolvedValue(mockJob),
       },
     };
 

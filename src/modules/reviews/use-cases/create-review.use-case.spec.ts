@@ -262,7 +262,8 @@ describe('CreateReviewUseCase', () => {
     await useCase.execute(baseInput);
 
     expect(prisma.avaliacao.aggregate).toHaveBeenCalledWith({
-      where: { restaurantId: RESTAURANT_ID },
+      // Só notas recebidas pelo restaurante (escritas por profissionais).
+      where: { restaurantId: RESTAURANT_ID, avaliadorRole: Role.PROFISSIONAL },
       _avg: { rating: true },
     });
     expect(prisma.restaurant.update).toHaveBeenCalledWith({
@@ -288,7 +289,11 @@ describe('CreateReviewUseCase', () => {
     });
 
     expect(prisma.avaliacao.aggregate).toHaveBeenCalledWith({
-      where: { professionalId: PROFESSIONAL_ID },
+      // Só notas recebidas pelo profissional (escritas por restaurantes).
+      where: {
+        professionalId: PROFESSIONAL_ID,
+        avaliadorRole: Role.RESTAURANTE,
+      },
       _avg: { rating: true },
     });
     expect(prisma.professional.update).toHaveBeenCalledWith({

@@ -1,4 +1,4 @@
-import { ContractType, JobStatus, Prisma } from '@prisma/client';
+import { ContractType, JobStatus, Prisma, JobShift } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ListMyJobsUseCase } from './list-my-jobs.use-case';
 
@@ -25,7 +25,7 @@ describe('ListMyJobsUseCase', () => {
     requirements: 'Experiência mínima de 2 anos',
     salary: new Prisma.Decimal('3500.00'),
     contractType: ContractType.CLT,
-    shift: 'NOITE',
+    shifts: [JobShift.NOITE],
     status: JobStatus.ABERTA,
     urgent: true,
     createdAt,
@@ -51,7 +51,7 @@ describe('ListMyJobsUseCase', () => {
           requirements: 'Experiência mínima de 2 anos',
           salary: 3500,
           contractType: ContractType.CLT,
-          shift: 'NOITE',
+          shifts: [JobShift.NOITE],
           status: JobStatus.ABERTA,
           urgent: true,
           createdAt,
@@ -63,13 +63,13 @@ describe('ListMyJobsUseCase', () => {
     });
   });
 
-  it('devolve shift null para vagas criadas antes da coluna de turno', async () => {
-    prisma.job.findMany.mockResolvedValue([{ ...jobRow, shift: null }]);
+  it('devolve lista de turnos vazia quando a vaga não tem turno', async () => {
+    prisma.job.findMany.mockResolvedValue([{ ...jobRow, shifts: [] }]);
     prisma.job.count.mockResolvedValue(1);
 
     const result = await useCase.execute({ restaurantId: RESTAURANTE_ID });
 
-    expect(result.data[0].shift).toBeNull();
+    expect(result.data[0].shifts).toEqual([]);
   });
 
   it('busca somente as vagas do restaurante do token, ativas e não excluídas', async () => {

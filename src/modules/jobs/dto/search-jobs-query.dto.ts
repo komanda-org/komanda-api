@@ -10,13 +10,19 @@ import {
   Min,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { ContractType } from '@prisma/client';
+import { ContractType, JobShift } from '@prisma/client';
 import { normalizeShift } from './normalize-shift';
 
 export class SearchJobsQueryDto {
-  @ApiProperty({ required: false })
+  @ApiProperty({
+    required: false,
+    example: 'garcom noite',
+    description:
+      'Palavras-chave separadas por espaço. A vaga precisa conter todas, em qualquer ordem, no título, descrição, requisitos ou nome do restaurante. Ignora maiúsculas e acentos.',
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(200, { message: 'query não pode passar de 200 caracteres' })
   query?: string;
 
   @ApiProperty({ required: false, enum: ContractType })
@@ -24,12 +30,17 @@ export class SearchJobsQueryDto {
   @IsEnum(ContractType)
   contractType?: ContractType;
 
-  @ApiProperty({ required: false, example: 'NOITE' })
+  @ApiProperty({
+    required: false,
+    enum: JobShift,
+    description: 'Vagas que têm este turno entre os delas',
+  })
   @IsOptional()
   @Transform(normalizeShift)
-  @IsString()
-  @MaxLength(30, { message: 'shift não pode passar de 30 caracteres' })
-  shift?: string;
+  @IsEnum(JobShift, {
+    message: `shift aceita: ${Object.values(JobShift).join(', ')}`,
+  })
+  shift?: JobShift;
 
   @ApiProperty({ required: false })
   @IsOptional()

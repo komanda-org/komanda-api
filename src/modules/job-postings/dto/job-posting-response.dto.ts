@@ -1,4 +1,4 @@
-import { ContractType, Job, JobStatus } from '@prisma/client';
+import { ContractType, Job, JobStatus, JobShift } from '@prisma/client';
 
 export interface JobPostingResponseDto {
   id: string;
@@ -7,7 +7,7 @@ export interface JobPostingResponseDto {
   requirements?: string;
   salary?: number;
   contractType: ContractType;
-  shift?: string;
+  shifts: JobShift[];
   status: JobStatus;
   urgent: boolean;
   restaurantId: string;
@@ -23,7 +23,7 @@ export function toJobPostingResponse(vaga: Job): JobPostingResponseDto {
     requirements: vaga.requirements ?? undefined,
     salary: vaga.salary?.toNumber(),
     contractType: vaga.contractType,
-    shift: vaga.shift ?? undefined,
+    shifts: vaga.shifts,
     status: vaga.status,
     urgent: vaga.urgent,
     restaurantId: vaga.restaurantId,

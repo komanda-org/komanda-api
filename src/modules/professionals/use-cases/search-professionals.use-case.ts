@@ -17,6 +17,8 @@ export class SearchProfessionalsUseCase {
     const where: Prisma.ProfessionalWhereInput = {
       active: true,
       deletedAt: null,
+      // A exclusão de conta é soft-delete no User: quem excluiu sai da busca.
+      user: { active: true, deletedAt: null },
       ...(query.position
         ? { mainRole: { contains: query.position, mode: 'insensitive' } }
         : {}),

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { CandidaturaStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AssertChatAccessUseCase } from './assert-chat-access';
 
@@ -12,6 +13,8 @@ interface ListMessagesInput {
 interface MessageResponse {
   id: string;
   jobId: string;
+  /** O profissional da conversa: o próprio remetente se for profissional, ou o único aprovado na vaga quando for restaurante. */
+  professionalId: string | null;
   senderId: string;
   content: string;
   createdAt: Date;
@@ -61,10 +64,38 @@ export class ListMessagesUseCase {
       },
     });
 
-    const hasMore = messages.length > take;
-    const limitedMessages = hasMore ? messages.slice(0, take) : messages;
+    // Descobre o professionalId de cada mensagem para o front filtrar por conversa.
+    // Remetente profissional com candidatura aprovada → professionalId = próprio id.
+    // Remetente restaurante → professionalId do único aprovado (se houver só um); senão null (broadcast).
+    const job = await this.prisma.job.findUnique({
+      where: { id: input.jobId },
+      select: {
+        restaurantId: true,
+        candidaturas: {
+          where: { status: CandidaturaStatus.APROVADA },
+          select: { professionalId: true },
+        },
+      },
+    });
 
-    // Resposta sempre ascendente (mais antigo primeiro)
+    const restaurantId = job?.restaurantId ?? null;
+    const approvedProfessionals = job?.candidaturas.map((c) => c.professionalId) ?? [];
+
+    const messagesWithProfessionalId = messages.map((m) => {
+      if (approvedProfessionals.includes(m.senderId)) {
+        return { ...m, professionalId: m.senderId };
+      }
+      if (m.senderId === restaurantId && approvedProfessionals.length === 1) {
+        return { ...m, professionalId: approvedProfessionals[0] };
+      }
+      return { ...m, professionalId: null };
+    });
+
+    const hasMore = messages.length > take;
+    const limitedMessages = hasMore
+      ? messagesWithProfessionalId.slice(0, take)
+      : messagesWithProfessionalId;
+
     const sortedMessages = [...limitedMessages].reverse();
 
     return {

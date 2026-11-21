@@ -18,6 +18,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AuthGuard } from 'src/auth/auth.guard';
 import type { AuthenticatedRequest } from 'src/auth/interfaces/authenticated-request.interface';
 import { Roles } from 'src/auth/roles.decorator';
@@ -53,6 +54,7 @@ export class JobPostingsController {
   ) {}
 
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   @Roles(Role.RESTAURANTE)
   @ApiOperation({ summary: 'Criar vaga' })
@@ -68,7 +70,7 @@ export class JobPostingsController {
       requirements: dto.requirements,
       salary: dto.salary,
       contractType: dto.contractType,
-      shift: dto.shift,
+      shifts: dto.shifts,
       urgent: dto.urgent,
       restaurantId: req.user.id,
     });
@@ -106,6 +108,7 @@ export class JobPostingsController {
         description: dto.description,
         requirements: dto.requirements,
         salary: dto.salary,
+        shifts: dto.shifts,
         contractType: dto.contractType,
         urgent: dto.urgent,
       },
@@ -140,6 +143,7 @@ export class JobPostingsController {
   }
 
   @Post(':id/applications')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @HttpCode(HttpStatus.CREATED)
   @Roles(Role.PROFISSIONAL)
   @ApiOperation({ summary: 'Candidatar-se a uma vaga' })
@@ -164,6 +168,7 @@ export class JobPostingsController {
   }
 
   @Get(':id/applications')
+  @SkipThrottle() // leitura autenticada de tela; ver notifications.controller
   @HttpCode(HttpStatus.OK)
   @Roles(Role.RESTAURANTE)
   @ApiOperation({ summary: 'Listar candidatos da vaga' })
@@ -185,10 +190,15 @@ export class JobPostingsController {
   }
 
   @Get('my-chats')
+  @SkipThrottle() // leitura autenticada de tela; ver notifications.controller
   @HttpCode(HttpStatus.OK)
   @Roles(Role.PROFISSIONAL, Role.RESTAURANTE)
   @ApiOperation({ summary: 'Listar conversas do usuário (matches aprovados)' })
-  @ApiResponse({ status: 200, description: 'Lista de conversas', type: [UserChatResponseDto] })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de conversas',
+    type: [UserChatResponseDto],
+  })
   async listMyChats(
     @Req() req: AuthenticatedRequest,
   ): Promise<UserChatResponseDto[]> {
