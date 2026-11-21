@@ -294,6 +294,7 @@ describe('JobPostingsController', () => {
     const response = [
       {
         jobId: 'job-1',
+        professionalId: 'professional-1',
         jobTitle: 'Chef de Cozinha',
         otherPartyName: 'Restaurante Teste',
         otherPartyPhoto: null,

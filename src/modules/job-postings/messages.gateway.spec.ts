@@ -172,7 +172,6 @@ describe('MessagesGateway', () => {
       expect(mockListMessagesUseCase.execute).toHaveBeenCalledWith({
         jobId: 'job-1',
         userId: 'prof-1',
-        professionalId: 'prof-1',
         take: 20,
       });
       expect(prof.join).toHaveBeenCalledWith('chat:job-1:prof-1');
@@ -196,7 +195,7 @@ describe('MessagesGateway', () => {
       });
 
       expect(mockListMessagesUseCase.execute).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: 'rest-1', professionalId: 'prof-2' }),
+        expect.objectContaining({ userId: 'rest-1' }),
       );
       expect(rest.join).toHaveBeenCalledWith('chat:job-1:prof-2');
       expect(result.ok).toBe(true);
@@ -387,7 +386,6 @@ describe('MessagesGateway', () => {
       expect(mockSendMessageUseCase.execute).toHaveBeenCalledWith({
         jobId: 'job-1',
         senderId: 'rest-1',
-        professionalId: 'prof-2',
         content: 'Hello',
         onlineUserIds: undefined,
       });
@@ -504,7 +502,6 @@ describe('MessagesGateway', () => {
       expect(mockListMessagesUseCase.execute).toHaveBeenCalledWith({
         jobId: 'job-1',
         userId: 'rest-1',
-        professionalId: 'prof-1',
         take: 10,
         before: undefined,
       });
