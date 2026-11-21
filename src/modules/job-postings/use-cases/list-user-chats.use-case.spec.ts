@@ -3,6 +3,7 @@ import type { PrismaService } from 'src/prisma/prisma.service';
 import { ListUserChatsUseCase } from './list-user-chats.use-case';
 
 const createMockPrisma = () => ({
+  job: { findMany: jest.fn() },
   candidatura: { findMany: jest.fn() },
   message: { findMany: jest.fn() },
 });
@@ -25,16 +26,14 @@ describe('ListUserChatsUseCase', () => {
 
   describe('restaurante', () => {
     it('com 2 aprovados na mesma vaga devolve 2 conversas, cada uma com a sua última mensagem', async () => {
-      prisma.candidatura.findMany.mockResolvedValue([
+      prisma.job.findMany.mockResolvedValue([
         {
-          professionalId: 'prof-1',
-          job: { id: 'job-1', title: 'Garçom' },
-          professional: { fullName: 'Marina Souza', profilePhoto: null },
-        },
-        {
-          professionalId: 'prof-2',
-          job: { id: 'job-1', title: 'Garçom' },
-          professional: { fullName: 'Carlos Menezes', profilePhoto: 'p.png' },
+          id: 'job-1',
+          title: 'Garçom',
+          candidaturas: [
+            { professionalId: 'prof-2', professional: { fullName: 'Carlos Menezes', profilePhoto: 'p.png' } },
+            { professionalId: 'prof-1', professional: { fullName: 'Marina Souza', profilePhoto: null } },
+          ],
         },
       ]);
       // distinct por (jobId, professionalId): a última de cada conversa
@@ -85,33 +84,32 @@ describe('ListUserChatsUseCase', () => {
     });
 
     it('ignora profissionais excluídos/inativos e vagas excluídas', async () => {
-      prisma.candidatura.findMany.mockResolvedValue([]);
+      prisma.job.findMany.mockResolvedValue([]);
       prisma.message.findMany.mockResolvedValue([]);
 
       await useCase.execute({ userId: 'rest-1', userRole: Role.RESTAURANTE });
 
-      expect(firstArgs(prisma.candidatura.findMany).where).toEqual({
-        status: CandidaturaStatus.APROVADA,
-        job: { restaurantId: 'rest-1', active: true, deletedAt: null },
-        professional: {
-          active: true,
-          deletedAt: null,
-          user: { active: true, deletedAt: null },
-        },
+      expect(firstArgs(prisma.job.findMany).where).toEqual({
+        restaurantId: 'rest-1',
+        candidaturas: { some: { status: CandidaturaStatus.APROVADA } },
       });
     });
 
     it('conversa sem mensagem vai para o fim da lista', async () => {
-      prisma.candidatura.findMany.mockResolvedValue([
+      prisma.job.findMany.mockResolvedValue([
         {
-          professionalId: 'prof-1',
-          job: { id: 'job-1', title: 'Garçom' },
-          professional: { fullName: 'Marina', profilePhoto: null },
+          id: 'job-1',
+          title: 'Garçom',
+          candidaturas: [
+            { professionalId: 'prof-1', professional: { fullName: 'Marina', profilePhoto: null } },
+          ],
         },
         {
-          professionalId: 'prof-2',
-          job: { id: 'job-2', title: 'Cozinheiro' },
-          professional: { fullName: 'Carlos', profilePhoto: null },
+          id: 'job-2',
+          title: 'Cozinheiro',
+          candidaturas: [
+            { professionalId: 'prof-2', professional: { fullName: 'Carlos', profilePhoto: null } },
+          ],
         },
       ]);
       prisma.message.findMany.mockResolvedValue([
@@ -160,6 +158,7 @@ describe('ListUserChatsUseCase', () => {
 
       // A busca de mensagens é restrita à conversa dele
       expect(firstArgs(prisma.message.findMany).where).toEqual({
+        jobId: { in: ['job-1'] },
         professionalId: 'prof-1',
       });
       expect(chats).toEqual([

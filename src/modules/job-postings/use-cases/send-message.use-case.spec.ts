@@ -4,12 +4,12 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { SendMessageUseCase } from './send-message.use-case';
 import { AssertChatAccessUseCase } from './assert-chat-access';
 import { JobEventNotifier } from '../job-event-notifier';
-import { CHAT_MESSAGE_SELECT } from '../dto/message-response.dto';
 
 describe('SendMessageUseCase', () => {
   let useCase: SendMessageUseCase;
   let prisma: {
     message: { create: jest.Mock };
+    job: { findUnique: jest.Mock };
     restaurant: { findUnique: jest.Mock };
     professional: { findUnique: jest.Mock };
   };
@@ -26,6 +26,20 @@ describe('SendMessageUseCase', () => {
   beforeEach(async () => {
     prisma = {
       message: { create: jest.fn() },
+      job: {
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({
+            restaurantId: 'rest-1',
+            restaurant: { restaurantName: 'Maré Alta' },
+            candidaturas: [
+              {
+                professionalId: 'prof-1',
+                professional: { fullName: 'Marina Souza' },
+              },
+            ],
+          }),
+      },
       restaurant: {
         findUnique: jest
           .fn()
@@ -81,18 +95,22 @@ describe('SendMessageUseCase', () => {
       expect(assertChatAccessMock.execute).toHaveBeenCalledWith({
         jobId: 'job-1',
         userId: 'rest-1',
-        professionalId: 'prof-1',
       });
       expect(prisma.message.create).toHaveBeenCalledWith({
         data: {
           jobId: 'job-1',
-          professionalId: 'prof-1',
           senderId: 'rest-1',
           content: 'Hello',
         },
-        select: CHAT_MESSAGE_SELECT,
+        select: {
+          id: true,
+          jobId: true,
+          senderId: true,
+          content: true,
+          createdAt: true,
+        },
       });
-      expect(result).toEqual({ ...mockMessage, professionalId: null });
+      expect(result).toEqual(mockMessage);
     });
 
     describe('notificação de mensagem nova', () => {
