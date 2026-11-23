@@ -1,9 +1,14 @@
+import type { ServerResponse } from 'node:http';
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import {
+  UPLOADS_ROOT,
+  UPLOADS_ROUTE,
+} from './modules/users/profile-photo/profile-photo.storage';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -21,6 +26,19 @@ async function bootstrap() {
   }
 
   app.use(helmet());
+
+  // Fotos de perfil enviadas pelo POST /api/users/me/photo. O helmet manda
+  // Cross-Origin-Resource-Policy: same-origin, que impediria o front (outra
+  // origem) de mostrar a imagem; aqui libera só para estes arquivos.
+  app.useStaticAssets(UPLOADS_ROOT, {
+    prefix: UPLOADS_ROUTE,
+    index: false,
+    dotfiles: 'deny',
+    setHeaders: (res: ServerResponse) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+    },
+  });
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? '*',

@@ -59,6 +59,10 @@ export class JobPostingsController {
   @Roles(Role.RESTAURANTE)
   @ApiOperation({ summary: 'Criar vaga' })
   @ApiResponse({ status: 201, description: 'Vaga criada com sucesso' })
+  @ApiResponse({
+    status: 403,
+    description: 'Limite de vagas ativas do plano atingido',
+  })
   async create(
     @Body() dto: CreateJobPostingDto,
     @Req() req: AuthenticatedRequest,

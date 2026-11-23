@@ -28,3 +28,5 @@ yarn-error.log*
 
 /generated/prisma
 .kilo
+# Fotos de perfil enviadas pela API
+/uploads

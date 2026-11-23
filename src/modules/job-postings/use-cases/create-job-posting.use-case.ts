@@ -1,6 +1,16 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ContractType, Job, Prisma, JobShift } from '@prisma/client';
+import {
+  ACTIVE_JOB_STATUSES,
+  MAX_ACTIVE_JOBS_BY_PLAN,
+} from '../job-plan-limits';
 import {
   JobPostingResponseDto,
   toJobPostingResponse,
@@ -49,6 +59,7 @@ export class CreateJobPostingUseCase {
         deletedAt: true,
         restaurantName: true,
         zipCode: true,
+        plan: true,
       },
     });
 
@@ -57,6 +68,25 @@ export class CreateJobPostingUseCase {
     // restaurante inativo ou removido.
     if (!restaurante || !restaurante.active || restaurante.deletedAt) {
       throw new NotFoundException('Restaurante não encontrado');
+    }
+
+    // Limite do plano. Duas criações simultâneas podem passar juntas da
+    // contagem (excede em 1 no pior caso); aceitável enquanto não há cobrança.
+    const limite = MAX_ACTIVE_JOBS_BY_PLAN[restaurante.plan];
+    if (limite !== null) {
+      const ativas = await this.prisma.job.count({
+        where: {
+          restaurantId: input.restaurantId,
+          status: { in: ACTIVE_JOB_STATUSES },
+          active: true,
+          deletedAt: null,
+        },
+      });
+      if (ativas >= limite) {
+        throw new ForbiddenException(
+          `Seu plano permite até ${limite} ${limite === 1 ? 'vaga ativa' : 'vagas ativas'}. Encerre uma vaga ou mude de plano para publicar outra.`,
+        );
+      }
     }
 
     let vaga: Job;

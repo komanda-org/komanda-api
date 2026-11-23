@@ -377,7 +377,7 @@ const PROFESSIONALS: ProfessionalSeed[] = [
     mainRole: 'Auxiliar de cozinha',
     interestedRoles: ['Cozinheira'],
     experienceSummary:
-      'Primeiro emprego em cozinha. Curso de boas práticas de manipulação de alimentos concluído em 2025.',
+      'Auxiliar de cozinha em início de carreira. Curso de boas práticas de manipulação de alimentos concluído em 2025.',
     neighborhood: 'Juca Rosa',
     zipCode: EUNAPOLIS_CEP,
     city: 'Eunápolis',
@@ -385,7 +385,24 @@ const PROFESSIONALS: ProfessionalSeed[] = [
     workModels: [WorkModel.CLT, WorkModel.TEMPORARIO],
     mobility: Mobility.LOCAL,
     createdDaysAgo: 20,
-    experiences: [],
+    experiences: [
+      {
+        company: 'Lanchonete Ponto Certo',
+        role: 'Auxiliar de cozinha',
+        startDate: '2025-03-10',
+        endDate: null,
+        description:
+          'Pré-preparo de lanches e porções, controle de validade e limpeza da cozinha.',
+      },
+      {
+        company: 'Buffet Festa Boa',
+        role: 'Ajudante de cozinha (temporário)',
+        startDate: '2024-11-01',
+        endDate: '2025-01-31',
+        description:
+          'Apoio na montagem de pratos e na organização da cozinha em eventos de fim de ano.',
+      },
+    ],
   },
   {
     key: 'diego',

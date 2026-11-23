@@ -1,5 +1,11 @@
-import { Logger, NotFoundException } from '@nestjs/common';
-import { ContractType, JobStatus, Prisma, JobShift } from '@prisma/client';
+import { ForbiddenException, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ContractType,
+  JobStatus,
+  Prisma,
+  JobShift,
+  PlanType,
+} from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { INotificacaoService } from 'src/modules/notifications/interfaces/notification-service.interface';
 import {
@@ -11,7 +17,7 @@ import {
 // use case realmente usa. Se ele passar a chamar outro método, o TS acusa.
 type PrismaMock = {
   restaurant: { findUnique: jest.Mock };
-  job: { create: jest.Mock };
+  job: { create: jest.Mock; count: jest.Mock };
   professional: { findMany: jest.Mock };
 };
 
@@ -42,12 +48,14 @@ describe('CreateJobPostingUseCase', () => {
     deletedAt: null,
     restaurantName: 'Cantina da Nonna',
     zipCode: '01310-100',
+    plan: PlanType.ESSENTIAL,
   };
 
   beforeEach(() => {
     prisma = {
       restaurant: { findUnique: jest.fn() },
-      job: { create: jest.fn() },
+      // Padrão: nenhuma vaga ativa, longe do limite do plano.
+      job: { create: jest.fn(), count: jest.fn().mockResolvedValue(0) },
       // Padrão: ninguém compatível — os testes de notificação sobrescrevem.
       professional: { findMany: jest.fn().mockResolvedValue([]) },
     };
@@ -221,6 +229,84 @@ describe('CreateJobPostingUseCase', () => {
 
     await expect(useCase.execute(input)).rejects.toThrow(NotFoundException);
     expect(prisma.job.create).not.toHaveBeenCalled();
+  });
+
+  describe('limite de vagas ativas por plano', () => {
+    it.each([
+      [PlanType.FREE, 1],
+      [PlanType.ESSENTIAL, 5],
+    ])(
+      'plano %s: barra com 403 ao atingir %i vagas ativas',
+      async (plan, limite) => {
+        prisma.restaurant.findUnique.mockResolvedValue({
+          ...restauranteAtivo,
+          plan,
+        });
+        prisma.job.count.mockResolvedValue(limite);
+
+        await expect(useCase.execute(input)).rejects.toThrow(
+          ForbiddenException,
+        );
+        expect(prisma.job.create).not.toHaveBeenCalled();
+        expect(notificacaoService.createMany).not.toHaveBeenCalled();
+      },
+    );
+
+    it('conta abertas e pausadas não excluídas do próprio restaurante', async () => {
+      prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
+      prisma.job.count.mockResolvedValue(5);
+
+      await expect(useCase.execute(input)).rejects.toThrow(
+        'Seu plano permite até 5 vagas ativas',
+      );
+      expect(prisma.job.count).toHaveBeenCalledWith({
+        where: {
+          restaurantId,
+          status: { in: [JobStatus.ABERTA, JobStatus.PAUSADA] },
+          active: true,
+          deletedAt: null,
+        },
+      });
+    });
+
+    it('abaixo do limite cria a vaga normalmente', async () => {
+      prisma.restaurant.findUnique.mockResolvedValue(restauranteAtivo);
+      prisma.job.count.mockResolvedValue(4);
+      prisma.job.create.mockResolvedValue({
+        id: 'job-5',
+        title: input.title,
+        description: input.description,
+        contractType: ContractType.CLT,
+        status: JobStatus.ABERTA,
+        restaurantId,
+        createdAt: new Date(),
+      });
+
+      await expect(useCase.execute(input)).resolves.toMatchObject({
+        id: 'job-5',
+      });
+    });
+
+    it('plano PRO não tem limite e nem conta as vagas', async () => {
+      prisma.restaurant.findUnique.mockResolvedValue({
+        ...restauranteAtivo,
+        plan: PlanType.PRO,
+      });
+      prisma.job.create.mockResolvedValue({
+        id: 'job-99',
+        title: input.title,
+        description: input.description,
+        contractType: ContractType.CLT,
+        status: JobStatus.ABERTA,
+        restaurantId,
+        createdAt: new Date(),
+      });
+
+      await useCase.execute(input);
+
+      expect(prisma.job.count).not.toHaveBeenCalled();
+      expect(prisma.job.create).toHaveBeenCalled();
+    });
   });
 
   it('converte P2003 (corrida na FK) em NotFoundException', async () => {
