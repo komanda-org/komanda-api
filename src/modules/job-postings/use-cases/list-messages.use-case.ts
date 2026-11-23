@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { CandidaturaStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { AssertChatAccessUseCase } from './assert-chat-access';
 
 interface ListMessagesInput {
   jobId: string;
   userId: string;
+  /** Obrigatório para o restaurante; ignorado para o profissional. */
+  professionalId?: string;
   before?: Date;
   take?: number;
 }
@@ -13,14 +15,15 @@ interface ListMessagesInput {
 interface MessageResponse {
   id: string;
   jobId: string;
-  /** O profissional da conversa: o próprio remetente se for profissional, ou o único aprovado na vaga quando for restaurante. */
-  professionalId: string | null;
+  professionalId: string;
   senderId: string;
   content: string;
   createdAt: Date;
 }
 
 interface ListMessagesResponse {
+  /** Profissional da conversa já resolvido pelo gate. */
+  professionalId: string;
   messages: MessageResponse[];
   hasMore: boolean;
 }
@@ -33,22 +36,22 @@ export class ListMessagesUseCase {
   ) {}
 
   async execute(input: ListMessagesInput): Promise<ListMessagesResponse> {
-    // Valida o gate
-    await this.assertChatAccess.execute({
+    // Valida o gate e resolve de quem é a conversa
+    const conversation = await this.assertChatAccess.execute({
       jobId: input.jobId,
       userId: input.userId,
+      professionalId: input.professionalId,
     });
 
     // take default 50, máx 100
     const take = Math.min(input.take ?? 50, 100);
 
-    const where: any = {
-      jobId: input.jobId,
+    // Só as mensagens desta conversa: outro aprovado na mesma vaga não entra.
+    const where: Prisma.MessageWhereInput = {
+      jobId: conversation.jobId,
+      professionalId: conversation.professionalId,
+      ...(input.before ? { createdAt: { lt: input.before } } : {}),
     };
-
-    if (input.before) {
-      where.createdAt = { lt: input.before };
-    }
 
     // Busca take + 1 para determinar hasMore
     const messages = await this.prisma.message.findMany({
@@ -58,48 +61,20 @@ export class ListMessagesUseCase {
       select: {
         id: true,
         jobId: true,
+        professionalId: true,
         senderId: true,
         content: true,
         createdAt: true,
       },
     });
 
-    // Descobre o professionalId de cada mensagem para o front filtrar por conversa.
-    // Remetente profissional com candidatura aprovada → professionalId = próprio id.
-    // Remetente restaurante → professionalId do único aprovado (se houver só um); senão null (broadcast).
-    const job = await this.prisma.job.findUnique({
-      where: { id: input.jobId },
-      select: {
-        restaurantId: true,
-        candidaturas: {
-          where: { status: CandidaturaStatus.APROVADA },
-          select: { professionalId: true },
-        },
-      },
-    });
-
-    const restaurantId = job?.restaurantId ?? null;
-    const approvedProfessionals = job?.candidaturas.map((c) => c.professionalId) ?? [];
-
-    const messagesWithProfessionalId = messages.map((m) => {
-      if (approvedProfessionals.includes(m.senderId)) {
-        return { ...m, professionalId: m.senderId };
-      }
-      if (m.senderId === restaurantId && approvedProfessionals.length === 1) {
-        return { ...m, professionalId: approvedProfessionals[0] };
-      }
-      return { ...m, professionalId: null };
-    });
-
     const hasMore = messages.length > take;
-    const limitedMessages = hasMore
-      ? messagesWithProfessionalId.slice(0, take)
-      : messagesWithProfessionalId;
+    const limitedMessages = hasMore ? messages.slice(0, take) : messages;
 
-    const sortedMessages = [...limitedMessages].reverse();
-
+    // Resposta sempre ascendente (mais antigo primeiro)
     return {
-      messages: sortedMessages,
+      professionalId: conversation.professionalId,
+      messages: [...limitedMessages].reverse(),
       hasMore,
     };
   }

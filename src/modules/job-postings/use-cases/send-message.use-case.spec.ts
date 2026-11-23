@@ -95,16 +95,19 @@ describe('SendMessageUseCase', () => {
       expect(assertChatAccessMock.execute).toHaveBeenCalledWith({
         jobId: 'job-1',
         userId: 'rest-1',
+        professionalId: 'prof-1',
       });
       expect(prisma.message.create).toHaveBeenCalledWith({
         data: {
           jobId: 'job-1',
+          professionalId: 'prof-1',
           senderId: 'rest-1',
           content: 'Hello',
         },
         select: {
           id: true,
           jobId: true,
+          professionalId: true,
           senderId: true,
           content: true,
           createdAt: true,

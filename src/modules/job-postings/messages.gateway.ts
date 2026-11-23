@@ -291,13 +291,14 @@ export class MessagesGateway
       const result = await this.listMessagesUseCase.execute({
         jobId: data.jobId,
         userId,
+        professionalId: requested.professionalId,
         take: data.take,
       });
 
       // Entra na sala apenas após validação bem-sucedida
       const conversation: Conversation = {
         jobId: data.jobId,
-        professionalId: requested.professionalId,
+        professionalId: result.professionalId,
       };
       client.join(roomOf(conversation));
       const chats = dataOf(client).chats ?? [];
@@ -385,6 +386,7 @@ export class MessagesGateway
       const message = await this.sendMessageUseCase.execute({
         jobId: data.jobId,
         senderId: userId,
+        professionalId: requested.professionalId,
         content: data.content,
         // Quem está na sala vê a mensagem ao vivo: não precisa de notificação.
         onlineUserIds: this.roomUsers.get(conversationKey(requested)),
@@ -445,6 +447,7 @@ export class MessagesGateway
       const result = await this.listMessagesUseCase.execute({
         jobId: data.jobId,
         userId,
+        professionalId: requested.professionalId,
         before,
         take: data.take,
       });
