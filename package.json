@@ -27,6 +27,7 @@
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:test": "tsx prisma/seed-test.ts",
     "db:backfill-coordinates": "tsx prisma/backfill-restaurant-coordinates.ts"
   },
   "dependencies": {
