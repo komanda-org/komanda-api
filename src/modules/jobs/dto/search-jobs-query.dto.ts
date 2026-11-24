@@ -4,6 +4,7 @@ import {
   IsInt,
   IsNumber,
   IsOptional,
+  IsPositive,
   IsString,
   Max,
   MaxLength,
@@ -51,6 +52,42 @@ export class SearchJobsQueryDto {
   )
   @Min(0, { message: 'minSalary deve ser maior ou igual a zero' })
   minSalary?: number;
+
+  @ApiProperty({
+    required: false,
+    example: -12.97,
+    description: 'Latitude do profissional. Vai junto com lng.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'lat deve ser um número' })
+  @Min(-90, { message: 'lat deve estar entre -90 e 90' })
+  @Max(90, { message: 'lat deve estar entre -90 e 90' })
+  lat?: number;
+
+  @ApiProperty({
+    required: false,
+    example: -38.5,
+    description: 'Longitude do profissional. Vai junto com lat.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'lng deve ser um número' })
+  @Min(-180, { message: 'lng deve estar entre -180 e 180' })
+  @Max(180, { message: 'lng deve estar entre -180 e 180' })
+  lng?: number;
+
+  @ApiProperty({
+    required: false,
+    example: 5,
+    description:
+      'Raio em km a partir de lat/lng. Exige lat e lng. Ausente = sem limite.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({}, { message: 'maxDistanceKm deve ser um número' })
+  @IsPositive({ message: 'maxDistanceKm deve ser maior que zero' })
+  maxDistanceKm?: number;
 
   @ApiProperty({ required: false })
   @IsOptional()

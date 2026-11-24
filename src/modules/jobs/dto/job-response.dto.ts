@@ -24,6 +24,9 @@ export interface JobResponseDto {
   restaurantId: string;
   restaurant: JobRestaurantDto;
   createdAt: Date;
+  // Só na busca com lat/lng: km até o restaurante, 1 casa decimal.
+  // null = restaurante sem coordenadas. Ausente = distância não calculada.
+  distanceKm?: number | null;
 }
 
 export interface ListJobsResponseDto {

@@ -10,3 +10,5 @@ process.env.AUTH_LOGIN_TTL_SECONDS = process.env.AUTH_LOGIN_TTL_SECONDS ?? '60';
 process.env.PASSWORD_RESET_TOKEN_PEPPER =
   process.env.PASSWORD_RESET_TOKEN_PEPPER ??
   'test-pepper-secret-0123456789abcdef';
+// Testes nunca chamam BrasilAPI/Nominatim.
+process.env.GEOCODING_ENABLED = process.env.GEOCODING_ENABLED ?? 'false';

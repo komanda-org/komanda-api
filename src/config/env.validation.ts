@@ -15,4 +15,6 @@ export const envValidationSchema = Joi.object({
   TRUST_PROXY_HOPS: Joi.number().integer().min(0).default(0),
   PASSWORD_RESET_TOKEN_PEPPER: Joi.string().min(32).required(),
   DB_POOL_SIZE: Joi.number().integer().min(1).default(10),
+  // false = não geocodifica CEP de restaurante (sem chamar BrasilAPI/Nominatim).
+  GEOCODING_ENABLED: Joi.boolean().default(true),
 });

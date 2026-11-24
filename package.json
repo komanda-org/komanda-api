@@ -26,7 +26,8 @@
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "db:reset": "prisma migrate reset",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:backfill-coordinates": "tsx prisma/backfill-restaurant-coordinates.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

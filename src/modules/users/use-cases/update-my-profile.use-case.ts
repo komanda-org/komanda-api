@@ -9,6 +9,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import type { JwtPayload } from 'src/auth/interfaces/authenticated-request.interface';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ZipCodeGeocoder } from 'src/common/geocoding/zip-code-geocoder';
 import {
   UpdateProfessionalProfileDto,
   UpdateRestaurantProfileDto,
@@ -32,7 +33,10 @@ export interface UpdatedProfileResponse {
 
 @Injectable()
 export class UpdateMyProfileUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly geocoder: ZipCodeGeocoder,
+  ) {}
 
   async execute(input: UpdateMyProfileInput): Promise<UpdatedProfileResponse> {
     if (input.user.role === Role.PROFISSIONAL) {
@@ -86,10 +90,15 @@ export class UpdateMyProfileUseCase {
         input.payload,
       );
 
+      const coordinates = await this.recomputeRestaurantCoordinates(
+        input.user.id,
+        data,
+      );
+
       try {
         const restaurant = await this.prisma.restaurant.update({
           where: { userId: input.user.id },
-          data,
+          data: { ...data, ...coordinates },
         });
 
         return {
@@ -114,6 +123,37 @@ export class UpdateMyProfileUseCase {
     throw new ForbiddenException(
       'Role não permitida para atualização de perfil',
     );
+  }
+
+  // CEP ou endereço mudou: geocodifica de novo. Devolve as colunas a gravar,
+  // ou {} quando nada de localização mudou (coordenadas atuais ficam).
+  // Falha na API externa vira null: coordenada antiga apontaria para o lugar
+  // errado, e o restaurante só sai da busca com raio até a próxima edição.
+  private async recomputeRestaurantCoordinates(
+    userId: string,
+    data: UpdateRestaurantProfileDto,
+  ): Promise<{ latitude?: number | null; longitude?: number | null }> {
+    if (data.zipCode === undefined && data.address === undefined) return {};
+
+    const current = await this.prisma.restaurant.findUnique({
+      where: { userId },
+      select: { zipCode: true, address: true },
+    });
+    // Sem perfil: o update logo abaixo responde 404.
+    if (!current) return {};
+
+    const zipCode = data.zipCode === undefined ? current.zipCode : data.zipCode;
+    const address = data.address ?? current.address;
+    const sameZip =
+      (zipCode?.replace(/\D/g, '') ?? null) ===
+      (current.zipCode?.replace(/\D/g, '') ?? null);
+    if (sameZip && address === current.address) return {};
+
+    const coordinates = await this.geocoder.geocode({ zipCode, address });
+    return {
+      latitude: coordinates?.latitude ?? null,
+      longitude: coordinates?.longitude ?? null,
+    };
   }
 
   private async validatePayload<T extends object>(

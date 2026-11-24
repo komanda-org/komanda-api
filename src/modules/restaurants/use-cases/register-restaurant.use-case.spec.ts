@@ -3,11 +3,13 @@ import { UserAlreadyExistsException } from 'src/auth/exceptions';
 import { Prisma, Role } from '@prisma/client';
 import { RegisterRestaurantUseCase } from './register-restaurant.use-case';
 import { CreateRestaurantDto } from '../dto/create-restaurant.dto';
+import type { ZipCodeGeocoder } from 'src/common/geocoding/zip-code-geocoder';
 
 describe('RegisterRestaurantUseCase', () => {
   let useCase: RegisterRestaurantUseCase;
   let mockPrisma: any;
   let mockAuthCryptoService: any;
+  let mockGeocoder: { geocode: jest.Mock };
 
   beforeEach(() => {
     mockPrisma = {
@@ -26,7 +28,79 @@ describe('RegisterRestaurantUseCase', () => {
       hash: jest.fn(),
     };
 
-    useCase = new RegisterRestaurantUseCase(mockPrisma, mockAuthCryptoService);
+    mockGeocoder = { geocode: jest.fn().mockResolvedValue(null) };
+
+    useCase = new RegisterRestaurantUseCase(
+      mockPrisma,
+      mockAuthCryptoService,
+      mockGeocoder as unknown as ZipCodeGeocoder,
+    );
+  });
+
+  describe('geocodificação do CEP', () => {
+    const dto: CreateRestaurantDto = {
+      email: 'geo@example.com',
+      password: 'password123',
+      restaurantName: 'Geo Restaurante',
+      cnpj: '12.345.678/0001-90',
+      cuisineType: 'Baiana',
+      description: 'Comida baiana',
+      address: 'Rua das Flores, 10 - Centro, Salvador - BA',
+      phone: '(71) 99999-0000',
+      zipCode: '40020-000',
+    };
+
+    // Devolve o `data` que chegou em tx.restaurant.create.
+    const captureCreateData = () => {
+      type CreateArgs = { data: Record<string, unknown> };
+      const create = jest.fn(({ data }: CreateArgs) => ({
+        ...data,
+        createdAt: new Date(),
+        user: { email: dto.email, role: Role.RESTAURANTE },
+      }));
+      const tx = {
+        user: { create: jest.fn().mockResolvedValue({ id: 'user-geo' }) },
+        restaurant: { create },
+      };
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.restaurant.findUnique.mockResolvedValue(null);
+      mockAuthCryptoService.hash.mockResolvedValue('hash');
+      mockPrisma.$transaction.mockImplementation(
+        (callback: (client: typeof tx) => unknown) => callback(tx),
+      );
+      return () => create.mock.calls[0][0].data;
+    };
+
+    it('grava as coordenadas do CEP no cadastro', async () => {
+      const createdData = captureCreateData();
+      mockGeocoder.geocode.mockResolvedValue({
+        latitude: -12.97,
+        longitude: -38.5,
+      });
+
+      await useCase.execute(dto);
+
+      expect(mockGeocoder.geocode).toHaveBeenCalledWith({
+        zipCode: '40020-000',
+        address: dto.address,
+      });
+      expect(createdData()).toMatchObject({
+        zipCode: '40020-000',
+        latitude: -12.97,
+        longitude: -38.5,
+      });
+    });
+
+    it('cadastra mesmo se a API de CEP falhar: coordenadas ficam null', async () => {
+      const createdData = captureCreateData();
+      // O geocodificador nunca lança; falha externa chega aqui como null.
+      mockGeocoder.geocode.mockResolvedValue(null);
+
+      const result = await useCase.execute(dto);
+
+      expect(result.userId).toBe('user-geo');
+      expect(createdData()).toMatchObject({ latitude: null, longitude: null });
+    });
   });
 
   describe('execute', () => {

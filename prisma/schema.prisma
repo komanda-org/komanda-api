@@ -164,6 +164,11 @@ model Restaurant {
   phone          String
   /// null = restaurante itinerante (só eventos), sem endereço fixo
   zipCode        String?     @map("zip_code")
+  /// Coordenadas do CEP, preenchidas pela geocodificação no cadastro e na
+  /// edição de CEP/endereço. null = itinerante ou geocodificação falhou;
+  /// o restaurante some da busca com raio, mas aparece na busca sem raio.
+  latitude       Float?
+  longitude      Float?
   logoUrl        String?     @map("logo_url")
   averageRating  Float? /// @min 0.0 @max 5.0
   createdAt      DateTime    @default(now()) @map("created_at")

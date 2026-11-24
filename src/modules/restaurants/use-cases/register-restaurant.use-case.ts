@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import { AuthCryptoService } from 'src/auth/auth-crypto.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ZipCodeGeocoder } from 'src/common/geocoding/zip-code-geocoder';
 import {
   UserAlreadyExistsException,
   CnpjAlreadyExistsException,
@@ -14,6 +15,7 @@ export class RegisterRestaurantUseCase {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auth: AuthCryptoService,
+    private readonly geocoder: ZipCodeGeocoder,
   ) {}
 
   async execute(dto: CreateRestaurantDto): Promise<RestaurantResponseDto> {
@@ -34,7 +36,12 @@ export class RegisterRestaurantUseCase {
       throw new CnpjAlreadyExistsException();
     }
 
-    const hashedPassword = await this.auth.hash(dto.password);
+    // Fora da transação para não segurar a conexão esperando API externa.
+    // Falha na geocodificação não impede o cadastro: coordenadas ficam null.
+    const [hashedPassword, coordinates] = await Promise.all([
+      this.auth.hash(dto.password),
+      this.geocoder.geocode({ zipCode: dto.zipCode, address: dto.address }),
+    ]);
 
     try {
       const restaurant = await this.prisma.$transaction(async (tx) => {
@@ -56,6 +63,8 @@ export class RegisterRestaurantUseCase {
             address: dto.address,
             phone: dto.phone,
             zipCode: dto.zipCode,
+            latitude: coordinates?.latitude ?? null,
+            longitude: coordinates?.longitude ?? null,
             logoUrl: dto.logoUrl,
           },
           include: { user: true },

@@ -59,9 +59,15 @@ export class JobsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
-      'Pesquisar vagas por termo, tipo de contrato, turno e salário mínimo',
+      'Pesquisar vagas por termo, tipo de contrato, turno, salário mínimo e distância',
+    description:
+      'Com lat e lng, cada vaga traz distanceKm (null se o restaurante não tem coordenadas). Com maxDistanceKm, só vêm vagas dentro do raio, da mais perto para a mais longe, e o total conta só essas.',
   })
   @ApiResponse({ status: 200, description: 'Lista filtrada de vagas' })
+  @ApiResponse({
+    status: 400,
+    description: 'maxDistanceKm sem lat e lng, ou lat sem lng (e vice-versa)',
+  })
   async searchJobs(@Query() query: SearchJobsQueryDto) {
     return await this.searchJobsUseCase.execute(query);
   }

@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Mobility, Role, WorkModel } from '@prisma/client';
 import type { PrismaService } from 'src/prisma/prisma.service';
+import type { ZipCodeGeocoder } from 'src/common/geocoding/zip-code-geocoder';
 import { EXPERIENCES_INCLUDE } from '../professional-profile.mapper';
 import { UpdateMyProfileUseCase } from './update-my-profile.use-case';
 
@@ -28,6 +29,10 @@ const createMockPrisma = () => ({
   },
   restaurant: {
     update: jest.fn(),
+    // Localização atual, comparada com a nova para decidir se geocodifica.
+    findUnique: jest
+      .fn()
+      .mockResolvedValue({ zipCode: '01310-100', address: 'Rua A, 1' }),
   },
 });
 
@@ -36,10 +41,96 @@ type MockPrisma = ReturnType<typeof createMockPrisma>;
 describe('UpdateMyProfileUseCase', () => {
   let useCase: UpdateMyProfileUseCase;
   let prisma: MockPrisma;
+  let geocoder: { geocode: jest.Mock };
 
   beforeEach(() => {
     prisma = createMockPrisma();
-    useCase = new UpdateMyProfileUseCase(prisma as unknown as PrismaService);
+    geocoder = { geocode: jest.fn().mockResolvedValue(null) };
+    useCase = new UpdateMyProfileUseCase(
+      prisma as unknown as PrismaService,
+      geocoder as unknown as ZipCodeGeocoder,
+    );
+  });
+
+  describe('geocodificação do restaurante', () => {
+    const restaurantUser = { id: 'restaurant-1', role: Role.RESTAURANTE };
+
+    beforeEach(() => {
+      prisma.restaurant.update.mockResolvedValue({ userId: 'restaurant-1' });
+    });
+
+    it('geocodifica de novo quando o CEP muda', async () => {
+      geocoder.geocode.mockResolvedValue({ latitude: -12.9, longitude: -38.4 });
+
+      await useCase.execute({
+        user: restaurantUser,
+        payload: { zipCode: '40020-000' },
+      });
+
+      expect(geocoder.geocode).toHaveBeenCalledWith({
+        zipCode: '40020-000',
+        address: 'Rua A, 1',
+      });
+      expect(prisma.restaurant.update).toHaveBeenCalledWith({
+        where: { userId: 'restaurant-1' },
+        data: { zipCode: '40020-000', latitude: -12.9, longitude: -38.4 },
+      });
+    });
+
+    it('geocodifica de novo quando só o endereço muda, com o CEP atual', async () => {
+      geocoder.geocode.mockResolvedValue({ latitude: -23.5, longitude: -46.6 });
+
+      await useCase.execute({
+        user: restaurantUser,
+        payload: { address: 'Rua B, 2' },
+      });
+
+      expect(geocoder.geocode).toHaveBeenCalledWith({
+        zipCode: '01310-100',
+        address: 'Rua B, 2',
+      });
+      expect(prisma.restaurant.update).toHaveBeenCalledWith({
+        where: { userId: 'restaurant-1' },
+        data: { address: 'Rua B, 2', latitude: -23.5, longitude: -46.6 },
+      });
+    });
+
+    it('salva a edição mesmo se a API de CEP falhar: coordenadas viram null', async () => {
+      geocoder.geocode.mockResolvedValue(null);
+
+      await useCase.execute({
+        user: restaurantUser,
+        payload: { zipCode: '40020-000' },
+      });
+
+      expect(prisma.restaurant.update).toHaveBeenCalledWith({
+        where: { userId: 'restaurant-1' },
+        data: { zipCode: '40020-000', latitude: null, longitude: null },
+      });
+    });
+
+    it('não chama a API quando CEP e endereço não mudam', async () => {
+      await useCase.execute({
+        user: restaurantUser,
+        payload: { zipCode: '01310100', address: 'Rua A, 1', phone: '1' },
+      });
+
+      expect(geocoder.geocode).not.toHaveBeenCalled();
+      const [[args]] = prisma.restaurant.update.mock.calls as [
+        [{ data: Record<string, unknown> }],
+      ];
+      expect(args.data).not.toHaveProperty('latitude');
+    });
+
+    it('não chama a API quando a edição não mexe em localização', async () => {
+      await useCase.execute({
+        user: restaurantUser,
+        payload: { logoUrl: null },
+      });
+
+      expect(prisma.restaurant.findUnique).not.toHaveBeenCalled();
+      expect(geocoder.geocode).not.toHaveBeenCalled();
+    });
   });
 
   it('atualiza perfil de profissional usando o id e role do token', async () => {
@@ -177,9 +268,10 @@ describe('UpdateMyProfileUseCase', () => {
         payload: { zipCode },
       });
 
+      // Itinerante não tem posição: as coordenadas antigas são apagadas.
       expect(prisma.restaurant.update).toHaveBeenCalledWith({
         where: { userId: 'restaurant-1' },
-        data: { zipCode: null },
+        data: { zipCode: null, latitude: null, longitude: null },
       });
     },
   );
@@ -325,6 +417,8 @@ describe('UpdateMyProfileUseCase', () => {
       data: {
         description: 'Comida caseira com opções regionais',
         address: 'Rua A, 123',
+        latitude: null,
+        longitude: null,
       },
     });
     expect(result.role).toBe(Role.RESTAURANTE);

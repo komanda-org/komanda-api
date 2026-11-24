@@ -48,6 +48,14 @@ export const JUNK_JOB_TITLES = [
 const EUNAPOLIS_CEP = '45820-020';
 const PORTO_SEGURO_CEP = '45810-000';
 
+// Coordenadas fixas (aproximadas, pelo endereço) para o filtro de distância
+// funcionar sem o seed depender da BrasilAPI/Nominatim.
+const COORDS = {
+  portoSeguroTaperapuan: { latitude: -16.4134, longitude: -39.0531 },
+  eunapolisCentro: { latitude: -16.3775, longitude: -39.5803 },
+  eunapolisDinahBorges: { latitude: -16.3667, longitude: -39.5728 },
+};
+
 type Tx = Prisma.TransactionClient;
 
 const daysAgo = (days: number, hour = 10, minute = 0): Date => {
@@ -166,6 +174,7 @@ interface RestaurantSeed {
   address: string;
   phone: string;
   zipCode: string | null;
+  coordinates: { latitude: number; longitude: number } | null;
   plan: PlanType;
   cnpjBase: string;
   createdDaysAgo: number;
@@ -182,6 +191,7 @@ const RESTAURANTS: RestaurantSeed[] = [
     address: 'Avenida Beira Mar, 1200 - Taperapuan, Porto Seguro - BA',
     phone: '(73) 3288-1200',
     zipCode: PORTO_SEGURO_CEP,
+    coordinates: COORDS.portoSeguroTaperapuan,
     plan: PlanType.PRO,
     cnpjBase: '452810000001',
     createdDaysAgo: 60,
@@ -196,6 +206,7 @@ const RESTAURANTS: RestaurantSeed[] = [
     address: 'Rua Duque de Caxias, 345 - Centro, Eunápolis - BA',
     phone: '(73) 3281-4455',
     zipCode: EUNAPOLIS_CEP,
+    coordinates: COORDS.eunapolisCentro,
     plan: PlanType.ESSENTIAL,
     cnpjBase: '452810000002',
     createdDaysAgo: 55,
@@ -210,6 +221,7 @@ const RESTAURANTS: RestaurantSeed[] = [
     address: 'Avenida Paulo Souto, 80 - Dinah Borges, Eunápolis - BA',
     phone: '(73) 3281-7788',
     zipCode: EUNAPOLIS_CEP,
+    coordinates: COORDS.eunapolisDinahBorges,
     plan: PlanType.FREE,
     cnpjBase: '452810000003',
     createdDaysAgo: 40,
@@ -225,6 +237,7 @@ const RESTAURANTS: RestaurantSeed[] = [
     phone: '(73) 99876-5544',
     // Restaurante itinerante: sem CEP, o front não calcula distância.
     zipCode: null,
+    coordinates: null,
     plan: PlanType.FREE,
     cnpjBase: '452810000004',
     createdDaysAgo: 30,
@@ -815,6 +828,8 @@ async function seedDemo(tx: Tx, passwordHash: string) {
             address: r.address,
             phone: r.phone,
             zipCode: r.zipCode,
+            latitude: r.coordinates?.latitude ?? null,
+            longitude: r.coordinates?.longitude ?? null,
             plan: r.plan,
             createdAt: daysAgo(r.createdDaysAgo),
           },
